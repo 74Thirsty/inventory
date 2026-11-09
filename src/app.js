@@ -115,21 +115,24 @@ export function buildApp() {
     const parsed = intakeBody.safeParse({ transaction: request.body?.transaction, source_channel: "correction", submitted_by: actor });
     if (!parsed.success) return reply.code(400).send({ error: "validation_failed", details: parsed.error.issues });
     const input = parsed.data.transaction;
-    const rows = await sql`
-      UPDATE transactions SET transaction_type=${input.transaction_type}, occurred_at=${input.occurred_at},
-      counterparty=${sql.json(input.counterparty)}, items=${sql.json(input.items)},
-      amount_paid=${input.amount_paid}, amount_received=${input.amount_received}, currency=${input.currency}, purpose=${input.purpose},
-      received_by=${input.received_by}, notes=${input.notes}, source_transcript=${input.source_transcript ?? null},
-      updated_at=now()
-      WHERE id=${request.params.id} AND status='draft_needs_approval' RETURNING *
-    `;
-    if (!rows.length) {
+    const corrected = await sql.begin(async (tx) => {
+      const rows = await tx`
+        UPDATE transactions SET transaction_type=${input.transaction_type}, occurred_at=${input.occurred_at},
+        counterparty=${tx.json(input.counterparty)}, items=${tx.json(input.items)}, amount_paid=${input.amount_paid}, amount_received=${input.amount_received},
+        currency=${input.currency}, purpose=${input.purpose}, received_by=${input.received_by}, notes=${input.notes},
+        source_transcript=${input.source_transcript ?? null}, updated_at=now()
+        WHERE id=${request.params.id} AND status='draft_needs_approval' RETURNING *
+      `;
+      if (!rows.length) return null;
+      await tx`INSERT INTO audit_events (transaction_id,event_type,actor,source,details)
+        VALUES (${request.params.id},'draft_corrected',${actor},'api',${tx.json({missing_or_ambiguous: input.missing_or_ambiguous, transaction: input})})`;
+      return rows[0];
+    });
+    if (!corrected) {
       const exists = await sql`SELECT status FROM transactions WHERE id=${request.params.id}`;
       return exists.length ? reply.code(409).send({ error: "invalid_state", status: exists[0].status }) : reply.code(404).send({ error: "not_found" });
     }
-    await sql`INSERT INTO audit_events (transaction_id,event_type,actor,source,details)
-      VALUES (${request.params.id},'draft_corrected',${actor},'api',${sql.json({missing_or_ambiguous: input.missing_or_ambiguous, transaction: input})})`;
-    return { record: toRecord(rows[0]) };
+    return { record: toRecord(corrected) };
   });
 
   app.post("/v1/transactions/:id/approve", { preHandler: requireApproverAuth }, async (request, reply) => {
@@ -161,19 +164,23 @@ export function buildApp() {
     const actor = String(request.headers["x-actor-id"] || "").trim();
     const reason = String(request.body?.reason || "").trim();
     if (!actor || !reason) return reply.code(400).send({ error: "actor_and_reason_required" });
-    const rows = await sql`
-      UPDATE transactions SET status='rejected', rejected_by=${actor}, rejected_at=now(),
-      rejection_reason=${reason.slice(0,1000)}, updated_at=now()
-      WHERE id=${request.params.id} AND status='draft_needs_approval' RETURNING *
-    `;
-    if (!rows.length) {
+    const rejected = await sql.begin(async (tx) => {
+      const rows = await tx`
+        UPDATE transactions SET status='rejected', rejected_by=${actor}, rejected_at=now(),
+        rejection_reason=${reason.slice(0,1000)}, updated_at=now()
+        WHERE id=${request.params.id} AND status='draft_needs_approval' RETURNING *
+      `;
+      if (!rows.length) return null;
+      await tx`INSERT INTO audit_events (transaction_id,event_type,actor,source,details)
+        VALUES (${request.params.id},'rejected',${actor},'api',${tx.json({reason: reason.slice(0,1000)})})`;
+      return rows[0];
+    });
+    if (!rejected) {
       const exists = await sql`SELECT status FROM transactions WHERE id=${request.params.id}`;
       return exists.length ? reply.code(409).send({ error: "invalid_state", status: exists[0].status }) : reply.code(404).send({ error: "not_found" });
     }
-    await sql`INSERT INTO audit_events (transaction_id,event_type,actor,source,details) VALUES (${request.params.id},'rejected',${actor},'api',${sql.json({reason: reason.slice(0,1000)})})`;
-    return { record: toRecord(rows[0]) };
+    return { record: toRecord(rejected) };
   });
-
 
   app.get("/v1/transactions/:id/audit", { preHandler: requireApproverAuth }, async (request, reply) => {
     const record = await sql`SELECT id FROM transactions WHERE id=${request.params.id}`;
