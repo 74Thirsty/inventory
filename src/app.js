@@ -34,6 +34,7 @@ export function buildApp() {
     try {
       const result = await sql.begin(async (tx) => {
         if (input.idempotency_key) {
+          await tx`SELECT pg_advisory_xact_lock(hashtext(${input.idempotency_key}))`;
           const prior = await tx`SELECT response FROM idempotency_keys WHERE key = ${input.idempotency_key}`;
           if (prior.length) {
             const priorId = prior[0].response?.id;
@@ -75,7 +76,8 @@ export function buildApp() {
   app.get("/v1/transactions", { preHandler: requireApproverAuth }, async (request, reply) => {
     const status = request.query.status || "draft_needs_approval";
     if (!["draft_needs_approval","approved","rejected","all"].includes(status)) return reply.code(400).send({ error: "invalid_status" });
-    const limit = Math.min(Math.max(Number(request.query.limit || 50), 1), 200);
+    const requestedLimit = Number(request.query.limit || 50);
+    const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(Math.trunc(requestedLimit), 1), 200) : 50;
     const rows = status === "all"
       ? await sql`SELECT * FROM transactions ORDER BY created_at DESC LIMIT ${limit}`
       : await sql`SELECT * FROM transactions WHERE status = ${status} ORDER BY created_at DESC LIMIT ${limit}`;
@@ -131,7 +133,7 @@ export function buildApp() {
       if (!record) return reply.code(404).send({ error: "not_found" });
       if (record.conflict) return reply.code(409).send({ error: "invalid_state", status: record.status });
       if (record.incomplete) return reply.code(409).send({ error: "incomplete_record", missing: record.missing });
-      return { record, document_path: `/v1/transactions/${record.id}/document` };
+      return { record, document_path: `/v1/transactions/${record.id}/document.docx` };
     } catch (error) {
       request.log.error({ err: error }, "approval failed");
       return reply.code(500).send({ error: "internal_error" });
