@@ -34,11 +34,12 @@ Use an organization-approved Teams/Power Automate integration:
 3. Add a condition that allows only named authorized submitters. Do not trust display names alone if the trigger exposes a stable user ID.
 4. Add an HTTP POST action to the n8n production webhook URL: https://<n8n-host>/webhook/llr/voice-intake.
 5. Add header x-llr-webhook-secret with the same secret configured on n8n. Store it in the flow's protected connection/secret configuration; never put it in a public channel message.
-6. Send JSON with this shape (map the fields using dynamic content from the Teams trigger):
+6. Add a Content Conversion **Html to text** action if the Teams trigger provides message HTML, then send JSON with this shape (map the fields using dynamic content from the Teams trigger):
 
     {
       "sender": "stable-user-id-or-verified-email",
       "messageId": "Teams-message-id",
+      "channelId": "Teams-channel-id",
       "sentAt": "2026-11-09T12:00:00Z",
       "text": "The dictated message body as plain text"
     }
