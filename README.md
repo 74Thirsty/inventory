@@ -12,7 +12,7 @@ John sends a voice message from his phone, for example:
 
 > “Pepsi's distributor delivered 240 cans of pop today for the burger fundraiser. I received it.”
 
-Phone dictation converts speech to text; the n8n workflow extracts a proposed transaction, and the API stores it as a pending draft. Missing details block approval until corrected. An authorized officer approves it before an official DOCX record is generated. The original message/transcript and supporting files remain linked to the resulting record.
+Phone dictation converts speech to text; the n8n workflow extracts a proposed transaction, and the API stores it as a pending draft. Missing details block approval until corrected. An authorized officer approves it before an official DOCX record is generated. The original transcript and Teams message ID are stored with the draft. Receipt/photo attachments are not yet uploaded or archived by this version.
 
 ## Architecture
 
@@ -20,7 +20,7 @@ Phone dictation converts speech to text; the n8n workflow extracts a proposed tr
 - **Orchestration:** n8n.
 - **Speech-to-text:** phone keyboard dictation for the first release; native audio transcription is not implemented yet.
 - **Extraction:** LLM returning strict structured JSON using `schemas/transaction.schema.json`.
-- **Approval:** separate approver API token and explicit officer action; interactive Teams approval cards are not implemented yet.
+- **Approval:** separate approver API token and explicit officer action; a Power Automate approval/SharePoint filing flow is documented but not configured.
 - **System of record:** PostgreSQL transaction ledger; generated DOCX/HTML records are downloaded from the API. SharePoint, Microsoft Lists/Dataverse, Excel, and Power BI are not connected yet.
 - **Audit:** Preserve source message ID, submitter, timestamps, extracted values, approval identity/time, and correction history.
 
@@ -34,6 +34,7 @@ Phone dictation converts speech to text; the n8n workflow extracts a proposed tr
 - `migrations/` — PostgreSQL schema.
 - `Dockerfile` / `docker-compose.yml` — self-hosted deployment foundation.
 - `docs/api.md` and `docs/deployment.md` — API and deployment contracts.
+- `docs/teams-dictation-setup.md` and `docs/power-automate-approval-setup.md` — Teams intake, approval, and filing setup.
 - `docs/teams-dictation-setup.md` — Teams/Power Automate bridge setup and boundaries.
 - `docs/architecture.md` — system boundaries, data flow, approvals, security, and rollout plan.
 - `docs/phase-1-test-cases.md` — acceptance and failure test cases.
