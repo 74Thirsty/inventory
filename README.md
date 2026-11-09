@@ -35,6 +35,7 @@ Phone dictation converts speech to text; the n8n workflow extracts a proposed tr
 - `Dockerfile` / `docker-compose.yml` — self-hosted deployment foundation.
 - `docs/api.md` and `docs/deployment.md` — API and deployment contracts.
 - `docs/teams-dictation-setup.md` and `docs/power-automate-approval-setup.md` — Teams intake, approval, and filing setup.
+- `docs/production-readiness.md` — verified work and blockers before real data or production use.
 - `docs/teams-dictation-setup.md` — Teams/Power Automate bridge setup and boundaries.
 - `docs/architecture.md` — system boundaries, data flow, approvals, security, and rollout plan.
 - `docs/phase-1-test-cases.md` — acceptance and failure test cases.
