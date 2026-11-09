@@ -4,7 +4,7 @@ A voice-first administrative record system for Lost Limb Riders. Initial scope: 
 
 ## Current status
 
-**Backend foundation implemented; live deployment and integrations remain unverified.** The repository now includes a Fastify/PostgreSQL API, draft/approval lifecycle, audit events, inventory reporting, printable HTML and DOCX generation, Docker deployment files, validation tests, and the initial n8n validation workflow. It is not yet connected to a live Microsoft Teams tenant, speech service, AI provider, or SharePoint site.
+**Backend and automated test foundation implemented; not production deployed.** The repository includes a Fastify/PostgreSQL API, draft/correction/approval/rejection lifecycle, audit events, inventory and cash summaries, DOCX/HTML generation, an AI extraction n8n workflow, Teams/Power Automate setup guides, and PostgreSQL-backed CI tests. No live Teams, n8n, LLM, SharePoint, or production-host connection has been configured or verified.
 
 ## Intended user experience
 
@@ -20,7 +20,7 @@ Phone dictation converts speech to text; the n8n workflow extracts a proposed tr
 - **Orchestration:** n8n.
 - **Speech-to-text:** phone keyboard dictation for the first release; native audio transcription is not implemented yet.
 - **Extraction:** LLM returning strict structured JSON using `schemas/transaction.schema.json`.
-- **Approval:** separate approver API token and explicit officer action; a Power Automate approval/SharePoint filing flow is documented but not configured.
+- **Approval:** separate approver API token and explicit officer action; Power Automate approval and SharePoint filing are documented but not configured.
 - **System of record:** PostgreSQL transaction ledger; generated DOCX/HTML records are downloaded from the API. SharePoint, Microsoft Lists/Dataverse, Excel, and Power BI are not connected yet.
 - **Audit:** Preserve source message ID, submitter, timestamps, extracted values, approval identity/time, and correction history.
 
@@ -36,18 +36,19 @@ Phone dictation converts speech to text; the n8n workflow extracts a proposed tr
 - `docs/api.md` and `docs/deployment.md` — API and deployment contracts.
 - `docs/teams-dictation-setup.md` and `docs/power-automate-approval-setup.md` — Teams intake, approval, and filing setup.
 - `docs/production-readiness.md` — verified work and blockers before real data or production use.
-- `docs/teams-dictation-setup.md` — Teams/Power Automate bridge setup and boundaries.
 - `docs/architecture.md` — system boundaries, data flow, approvals, security, and rollout plan.
 - `docs/phase-1-test-cases.md` — acceptance and failure test cases.
 
-## Import the n8n starter
+## Set up the workflows
 
-1. In n8n, open **Workflows → Import from File**.
-2. Import `workflows/n8n-voice-intake-starter.json`.
-3. Review the webhook path and configure authentication or an authenticated gateway before exposing it.
-4. Activate only after reviewing access controls.
-5. POST JSON containing `transcript` and `transaction` to the webhook. The transaction must follow the canonical schema.
-6. The current starter validates a proposed transaction. The API can persist it as a draft, enforce approval, and generate a DOCX/HTML record. Direct Teams ingestion, speech-to-text, AI extraction, and SharePoint filing still require tenant configuration and end-to-end integration.
+1. Deploy the API and PostgreSQL using `docs/deployment.md` in a controlled test environment.
+2. Import `workflows/n8n-dictated-teams-intake.json` into n8n for extraction from Teams dictated text.
+3. Configure the n8n environment variables listed in `docs/teams-dictation-setup.md`; keep the intake token and webhook secret out of workflow exports and Git.
+4. Configure the private Teams channel and Power Automate sender-verified bridge. The workflow expects message text, sender, message ID, and channel ID.
+5. Keep the workflow inactive until authentication and duplicate-delivery behavior pass with synthetic data.
+6. The workflow creates a pending draft only. Configure officer approval and SharePoint filing separately using `docs/power-automate-approval-setup.md`.
+
+The separate `workflows/n8n-voice-intake-starter.json` is a basic validation-only webhook example; it is not the primary AI extraction workflow.
 
 Example request:
 
