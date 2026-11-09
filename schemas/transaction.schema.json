@@ -212,6 +212,14 @@
         "null"
       ],
       "description": "Original transcription; preserve separately from normalized fields."
+    },
+    "amount_received": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Cash donations received by the organization. Use only for cash_contribution; never use amount_paid for incoming money."
     }
   }
 }
