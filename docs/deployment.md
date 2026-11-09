@@ -12,7 +12,7 @@
 1. Clone this repository onto the host.
 2. Generate a database password and two independent API secrets (at least 32 random characters each).
 3. Create `.env` from `.env.example`. Set `POSTGRES_PASSWORD`, `API_TOKEN`, `APPROVER_TOKEN`, `ORGANIZATION_NAME`, and `PUBLIC_BASE_URL`. Compose injects the container's database URL.
-4. Set `POSTGRES_PASSWORD` in the deployment environment (or Compose's protected environment file); do not commit it.
+4. Protect `.env` with owner-only permissions and never commit it.
 5. Run `docker compose up -d --build`.
 6. Confirm `GET /health/ready` returns 200 from the trusted network.
 7. Put the service behind HTTPS. Keep port 3000 private; the Compose binding is loopback-only.
@@ -21,6 +21,8 @@
 10. Configure monitoring for container restarts, disk capacity, database health, backup age, and failed workflow executions.
 
 ## Production hardening before real donor/financial data
+
+- Generate and commit a reviewed package-lock.json, then change the Dockerfile and CI install steps from npm install to npm ci so dependency versions are reproducible. This repository currently does not contain a lockfile.
 
 - Replace shared bearer secrets with per-user OAuth/OIDC identities or a managed API gateway before broad volunteer access.
 - Configure TLS, rate limiting, request-size limits, and network allowlists at the reverse proxy.
