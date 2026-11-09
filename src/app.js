@@ -2,7 +2,7 @@ import Fastify from "fastify";
 import { randomUUID } from "node:crypto";
 import { sql } from "./db.js";
 import { config } from "./config.js";
-import { intakeBody } from "./schema.js";
+import { intakeBody, workRequestIntake, workRequestPlan } from "./schema.js";
 import { requireApproverAuth, requireIntakeAuth } from "./security.js";
 import { transactionHtml, transactionDocx } from "./documents.js";
 
@@ -231,6 +231,90 @@ export function buildApp() {
   app.get("/v1/reports/summary", { preHandler: requireApproverAuth }, async () => {
     const rows = await sql`SELECT status, transaction_type, COUNT(*)::int AS count, COALESCE(SUM(amount_paid),0)::numeric(12,2) AS amount_paid, COALESCE(SUM(amount_received),0)::numeric(12,2) AS amount_received FROM transactions GROUP BY status, transaction_type ORDER BY status, transaction_type`;
     return { summary: rows.map((r) => ({ ...r, amount_paid: Number(r.amount_paid), amount_received: Number(r.amount_received) })) };
+  });
+
+
+  // General administrative work intake. The LLM/n8n layer interprets the
+  // request; this API stores the original source and a reviewable work plan.
+  app.post("/v1/work-requests", { preHandler: requireIntakeAuth }, async (request, reply) => {
+    const parsed = workRequestIntake.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "validation_failed", details: parsed.error.issues });
+    const input = parsed.data;
+    const id = randomUUID();
+    try {
+      const result = await sql.begin(async (tx) => {
+        if (input.idempotency_key) {
+          await tx`SELECT pg_advisory_xact_lock(hashtext(${input.idempotency_key}))`;
+          const prior = await tx`SELECT id FROM work_requests WHERE idempotency_key=${input.idempotency_key}`;
+          if (prior.length) {
+            const existing = await tx`SELECT * FROM work_requests WHERE id=${prior[0].id}`;
+            return { duplicate: true, work_request: existing[0] };
+          }
+        }
+        const rows = await tx`
+          INSERT INTO work_requests (id,status,source_text,source_channel,source_message_id,submitted_by,idempotency_key)
+          VALUES (${id},'received',${input.source_text},${input.source_channel},${input.source_message_id ?? null},${input.submitted_by ?? null},${input.idempotency_key ?? null})
+          RETURNING *
+        `;
+        await tx`INSERT INTO work_request_events (work_request_id,event_type,actor,details)
+          VALUES (${id},'received',${input.submitted_by ?? null},${tx.json({source_channel: input.source_channel})})`;
+        return { duplicate: false, work_request: rows[0] };
+      });
+      return reply.code(result.duplicate ? 200 : 201).send(result);
+    } catch (error) {
+      if (error.code === "23505" && input.source_message_id) {
+        const existing = await sql`SELECT * FROM work_requests WHERE source_message_id=${input.source_message_id}`;
+        if (existing.length) return reply.code(200).send({ duplicate: true, work_request: existing[0] });
+      }
+      request.log.error({ err: error }, "work request intake failed");
+      return reply.code(500).send({ error: "internal_error" });
+    }
+  });
+
+  app.get("/v1/work-requests", { preHandler: requireApproverAuth }, async (request, reply) => {
+    const allowed = ["received","planned","awaiting_clarification","ready_for_review","approved","rejected","completed","all"];
+    const status = request.query.status || "all";
+    if (!allowed.includes(status)) return reply.code(400).send({ error: "invalid_status" });
+    const requestedLimit = Number(request.query.limit || 50);
+    const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(Math.trunc(requestedLimit),1),200) : 50;
+    const rows = status === "all"
+      ? await sql`SELECT * FROM work_requests ORDER BY created_at DESC LIMIT ${limit}`
+      : await sql`SELECT * FROM work_requests WHERE status=${status} ORDER BY created_at DESC LIMIT ${limit}`;
+    return { work_requests: rows };
+  });
+
+  app.get("/v1/work-requests/:id", { preHandler: requireApproverAuth }, async (request, reply) => {
+    const rows = await sql`SELECT * FROM work_requests WHERE id=${request.params.id}`;
+    if (!rows.length) return reply.code(404).send({ error: "not_found" });
+    const events = await sql`SELECT id,event_type,actor,details,occurred_at FROM work_request_events WHERE work_request_id=${request.params.id} ORDER BY occurred_at ASC`;
+    return { work_request: rows[0], events };
+  });
+
+  app.put("/v1/work-requests/:id/plan", { preHandler: requireIntakeAuth }, async (request, reply) => {
+    const parsed = workRequestPlan.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "validation_failed", details: parsed.error.issues });
+    const plan = parsed.data;
+    if (plan.deliverables.length === 0) return reply.code(400).send({ error: "at_least_one_deliverable_required" });
+    const status = plan.open_questions.length ? "awaiting_clarification" : "ready_for_review";
+    const updated = await sql.begin(async (tx) => {
+      const rows = await tx`
+        UPDATE work_requests SET status=${status},intent_summary=${plan.intent_summary},
+          context=${tx.json(plan.context)},deliverables=${tx.json(plan.deliverables)},
+          open_questions=${tx.json(plan.open_questions)},execution_plan=${tx.json(plan.execution_plan)},
+          risk_flags=${tx.json(plan.risk_flags)},updated_at=now()
+        WHERE id=${request.params.id} AND status IN ('received','planned','awaiting_clarification','ready_for_review')
+        RETURNING *
+      `;
+      if (!rows.length) return null;
+      await tx`INSERT INTO work_request_events (work_request_id,event_type,actor,details)
+        VALUES (${request.params.id},'plan_recorded','n8n',${tx.json({status,deliverable_count:plan.deliverables.length,open_question_count:plan.open_questions.length})})`;
+      return rows[0];
+    });
+    if (!updated) {
+      const exists = await sql`SELECT status FROM work_requests WHERE id=${request.params.id}`;
+      return exists.length ? reply.code(409).send({error:"invalid_state",status:exists[0].status}) : reply.code(404).send({error:"not_found"});
+    }
+    return { work_request: updated };
   });
 
   app.setNotFoundHandler((_request, reply) => reply.code(404).send({ error: "not_found" }));
