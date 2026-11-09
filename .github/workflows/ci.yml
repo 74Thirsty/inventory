@@ -1,4 +1,4 @@
-name: CI
+name: CI # Includes patched dependency audit
 
 on:
   push:
