@@ -23,6 +23,7 @@ Body:
     "counterparty": {"name": "Pepsi distributor", "kind": "donor"},
     "items": [{"description": "Canned soft drinks", "category": "food_beverage", "quantity": 240, "unit": "can"}],
     "amount_paid": 0,
+    "amount_received": null,
     "currency": "USD",
     "purpose": "Burger fundraiser",
     "received_by": "John",
@@ -47,16 +48,19 @@ Approver token required. Status may be `draft_needs_approval`, `approved`, `reje
 
 ## Approve / reject
 
-- `PATCH /v1/transactions/:id` with approver token, `x-actor-id`, and a corrected `transaction` object. Only draft records can be corrected; each correction is audited.\n- `POST /v1/transactions/:id/approve` with approver token and `x-actor-id: named-authorized-approver`.
+- `PATCH /v1/transactions/:id` with approver token, `x-actor-id`, and a corrected `transaction` object. Only draft records can be corrected; each correction is audited.
+- `POST /v1/transactions/:id/approve` with approver token and `x-actor-id: named-authorized-approver`.
 - `POST /v1/transactions/:id/reject` with approver token, same actor header, and JSON body `{"reason":"..." }`.
 
 Approval is state-checked and audited. Only drafts can transition. Approval is blocked while the latest draft audit event lists unresolved required details. The API does not initiate payments or submit tax filings.
 
 ## Documents and reports
 
-- `GET /v1/transactions/:id/document` — downloadable printable HTML record.\n- `GET /v1/transactions/:id/document.docx` — downloadable editable Word record.\n- `GET /v1/transactions/:id/audit` — audit event history.
+- `GET /v1/transactions/:id/document` — downloadable printable HTML record.
+- `GET /v1/transactions/:id/document.docx` — downloadable editable Word record.
+- `GET /v1/transactions/:id/audit` — audit event history.
 - `GET /v1/reports/inventory` — approved inventory movements only.
-- `GET /v1/reports/summary` — counts and recorded cash spend by status/type.
+- `GET /v1/reports/summary` — counts, cash paid, and cash received by status/type.
 
 ## Security notes
 
