@@ -24,7 +24,7 @@ function approvalMissing(record, auditMissing = []) {
   if (["donation_received","purchase_received","reimbursement_requested","cash_contribution","equipment_received"].includes(record.transaction_type) && !record.counterparty?.name) add("counterparty.name");
   if (["purchase_received","reimbursement_requested","equipment_received"].includes(record.transaction_type) && record.amount_paid === null) add("amount_paid");
   if (record.transaction_type === "cash_contribution" && (record.amount_received === null || record.amount_received <= 0)) add("amount_received");
-  if (record.transaction_type === "donation_received" && Number(record.amount_paid) !== 0) add("amount_paid must be zero for a fully donated item");
+  if (record.transaction_type === "donation_received" && (record.amount_paid === null || Number(record.amount_paid) !== 0)) add("amount_paid must be zero for a fully donated item");
   if (record.transaction_type === "cash_contribution" && !record.currency) add("currency");
   if (record.transaction_type !== "cash_contribution" && (!Array.isArray(record.items) || record.items.length === 0)) add("items");
   if (record.transaction_type === "inventory_adjustment" && record.items.some((item) => !item.adjustment_direction)) add("inventory_adjustment direction");
