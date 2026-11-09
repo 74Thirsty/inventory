@@ -66,6 +66,7 @@ Example request:
       "unit": "can"
     }],
     "amount_paid": 0,
+    "amount_received": null,
     "currency": "USD",
     "purpose": "Burger fundraiser",
     "received_by": "John",
@@ -82,7 +83,7 @@ Example request:
 4. Donated goods and purchased goods remain distinguishable.
 5. Do not assign a tax-deductible value to donated goods. An accountant determines accounting treatment.
 6. Do not treat a voice statement as proof of payment. Request a receipt/invoice and payment evidence where relevant.
-7. Keep an immutable source/audit trail. Corrections create revisions; they do not silently overwrite approved records.
+7. Keep an auditable source trail. Corrections and decisions are recorded as audit events; this application-level audit log is not tamper-proof against a database administrator.
 8. Require authorized human approval before posting financial or inventory adjustments.
 9. Do not store sensitive personal information that is not necessary for the record.
 10. This tool supports recordkeeping; it does not determine legal tax treatment or replace the organization's accountant.
