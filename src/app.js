@@ -9,6 +9,7 @@ import { transactionHtml, transactionDocx } from "./documents.js";
 const toRecord = (row) => row ? {
   ...row,
   amount_paid: row.amount_paid === null ? null : Number(row.amount_paid),
+  amount_received: row.amount_received === null ? null : Number(row.amount_received),
   items: row.items,
   counterparty: row.counterparty
 } : null;
@@ -21,7 +22,8 @@ function approvalMissing(record, auditMissing = []) {
   if (!record.received_by) add("received_by");
   if (!record.purpose) add("purpose");
   if (["donation_received","purchase_received","reimbursement_requested","cash_contribution","equipment_received"].includes(record.transaction_type) && !record.counterparty?.name) add("counterparty.name");
-  if (["purchase_received","reimbursement_requested","cash_contribution","equipment_received"].includes(record.transaction_type) && record.amount_paid === null) add("amount_paid");
+  if (["purchase_received","reimbursement_requested","equipment_received"].includes(record.transaction_type) && record.amount_paid === null) add("amount_paid");
+  if (record.transaction_type === "cash_contribution" && (record.amount_received === null || record.amount_received <= 0)) add("amount_received");
   if (record.transaction_type === "donation_received" && Number(record.amount_paid) !== 0) add("amount_paid must be zero for a fully donated item");
   if (record.transaction_type === "cash_contribution" && !record.currency) add("currency");
   if (record.transaction_type !== "cash_contribution" && (!Array.isArray(record.items) || record.items.length === 0)) add("items");
@@ -61,12 +63,12 @@ export function buildApp() {
         const rows = await tx`
           INSERT INTO transactions (
             id, transaction_type, status, occurred_at, counterparty, items,
-            amount_paid, currency, purpose, received_by, notes, source_transcript,
+            amount_paid, amount_received, currency, purpose, received_by, notes, source_transcript,
             source_message_id, source_channel, submitted_by
           ) VALUES (
             ${id}, ${input.transaction.transaction_type}, 'draft_needs_approval',
             ${input.transaction.occurred_at}, ${tx.json(input.transaction.counterparty)},
-            ${tx.json(input.transaction.items)}, ${input.transaction.amount_paid},
+            ${tx.json(input.transaction.items)}, ${input.transaction.amount_paid}, ${input.transaction.amount_received},
             ${input.transaction.currency}, ${input.transaction.purpose},
             ${input.transaction.received_by}, ${input.transaction.notes},
             ${input.transaction.source_transcript ?? null}, ${input.source_message_id ?? null},
@@ -116,7 +118,7 @@ export function buildApp() {
     const rows = await sql`
       UPDATE transactions SET transaction_type=${input.transaction_type}, occurred_at=${input.occurred_at},
       counterparty=${sql.json(input.counterparty)}, items=${sql.json(input.items)},
-      amount_paid=${input.amount_paid}, currency=${input.currency}, purpose=${input.purpose},
+      amount_paid=${input.amount_paid}, amount_received=${input.amount_received}, currency=${input.currency}, purpose=${input.purpose},
       received_by=${input.received_by}, notes=${input.notes}, source_transcript=${input.source_transcript ?? null},
       updated_at=now()
       WHERE id=${request.params.id} AND status='draft_needs_approval' RETURNING *
@@ -220,8 +222,8 @@ export function buildApp() {
   });
 
   app.get("/v1/reports/summary", { preHandler: requireApproverAuth }, async () => {
-    const rows = await sql`SELECT status, transaction_type, COUNT(*)::int AS count, COALESCE(SUM(amount_paid),0)::numeric(12,2) AS amount_paid FROM transactions GROUP BY status, transaction_type ORDER BY status, transaction_type`;
-    return { summary: rows.map((r) => ({ ...r, amount_paid: Number(r.amount_paid) })) };
+    const rows = await sql`SELECT status, transaction_type, COUNT(*)::int AS count, COALESCE(SUM(amount_paid),0)::numeric(12,2) AS amount_paid, COALESCE(SUM(amount_received),0)::numeric(12,2) AS amount_received FROM transactions GROUP BY status, transaction_type ORDER BY status, transaction_type`;
+    return { summary: rows.map((r) => ({ ...r, amount_paid: Number(r.amount_paid), amount_received: Number(r.amount_received) })) };
   });
 
   app.setNotFoundHandler((_request, reply) => reply.code(404).send({ error: "not_found" }));
