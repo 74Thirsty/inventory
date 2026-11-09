@@ -25,7 +25,8 @@ export async function transactionDocx(record) {
     new Paragraph({ text: "Donor / supplier: " + (record.counterparty?.name || "Not provided") }),
     new Paragraph({ text: "Purpose: " + (record.purpose || "Not provided") }),
     new Paragraph({ text: "Received by: " + (record.received_by || "Not provided") }),
-    new Paragraph({ text: "Amount paid: " + (record.amount_paid === null ? "Not provided" : record.amount_paid + " " + (record.currency || "USD")) })
+    new Paragraph({ text: "Amount paid: " + (record.amount_paid === null ? "Not applicable" : record.amount_paid + " " + (record.currency || "USD")) }),
+    new Paragraph({ text: "Cash received: " + (record.amount_received === null ? "Not applicable" : record.amount_received + " " + (record.currency || "USD")) })
   ];
   const rows = [
     new TableRow({ children: ["Item", "Quantity", "Category", "Condition"].map((v) => new TableCell({ children: [new Paragraph({ text: v })] })) }),
