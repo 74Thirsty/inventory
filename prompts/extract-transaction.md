@@ -15,6 +15,7 @@ Return exactly one JSON object matching `schemas/transaction.schema.json`. Do no
 - Do not infer that “we got” something means it was donated.
 - For a fully donated item, set `amount_paid` to 0 only if the speaker clearly confirms no payment. Otherwise use null.
 - Do not estimate fair market value or a donor's tax deduction.
+- Use `amount_paid` only for money the organization paid out. Use `amount_received` only for cash contributions received. For `cash_contribution`, set `amount_paid` to null and capture the positive cash amount in `amount_received`.
 - Preserve the original transcript in `source_transcript`.
 - Dates must be ISO 8601 calendar dates (YYYY-MM-DD) only when the date is explicit or supplied by trusted message metadata. If “today” is used, use the trusted message timestamp and record that basis in notes; if no timestamp is supplied, return null.
 - Normalize obvious item names conservatively. “Pop” may be described as “soft drinks”; do not infer a brand unless spoken.
