@@ -9,6 +9,7 @@ const item = z.object({
   package_count: z.number().finite().nonnegative().nullable().optional(),
   units_per_package: z.number().finite().nonnegative().nullable().optional(),
   condition: z.enum(["new_unopened","usable","perishable_check","damaged","unknown"]).nullable().optional(),
+  adjustment_direction: z.enum(["increase","decrease"]).nullable().optional(),
   expiration_date: z.string().date().nullable().optional()
 }).strict();
 
@@ -19,7 +20,7 @@ export const transactionDraft = z.object({
     name: z.string().trim().max(300).nullable(),
     kind: z.enum(["donor","supplier","volunteer","attendee","other"]).nullable()
   }).strict().nullable(),
-  items: z.array(item).min(1).max(100),
+  items: z.array(item).max(100),
   amount_paid: z.number().finite().nonnegative().nullable(),
   currency: z.string().regex(/^[A-Z]{3}$/).nullable(),
   purpose: nullableText,
@@ -28,6 +29,12 @@ export const transactionDraft = z.object({
   missing_or_ambiguous: z.array(z.string().trim().min(1).max(500)).max(30).default([]),
   source_transcript: z.string().max(20000).nullable().optional()
 }).strict().superRefine((value, ctx) => {
+  if (value.transaction_type !== "cash_contribution" && value.items.length === 0) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["items"], message: "At least one item is required for an inventory transaction." });
+  }
+  if (value.transaction_type === "inventory_adjustment" && value.items.some((entry) => !entry.adjustment_direction)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["items"], message: "Every inventory adjustment item requires adjustment_direction: increase or decrease." });
+  }
   if (value.transaction_type === "donation_received" && value.amount_paid !== null && value.amount_paid !== 0) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["amount_paid"], message: "A donation received at no cost must have amount_paid 0; otherwise clarify whether this is a partial purchase." });
   }
