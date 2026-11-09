@@ -15,6 +15,7 @@ The CI run associated with commit 61f86354e9938573d5790d0478b7d970ceff246d compl
 - JavaScript syntax checks.
 - JSON parsing of the transaction schema and both n8n workflows.
 - Schema unit tests.
+- PostgreSQL-backed API integration tests: intake authentication, duplicate/idempotency, correction, approval, rejection, audit history, inventory calculation, cash-in/cash-out separation, and DOCX generation.
 - Production Docker image build.
 
 This verifies static checks, unit tests, PostgreSQL-backed API integration tests, dependency audit at that point in time, and image build. It does not verify a live production host or the external Microsoft 365/n8n integrations.
