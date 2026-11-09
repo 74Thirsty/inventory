@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lostlimbriders.org/schemas/transaction.schema.json",
+  "title": "Lost Limb Riders proposed transaction",
+  "description": "A proposed operational record extracted from a voice or text submission. AI-generated records remain drafts until approved.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "transaction_type",
+    "occurred_at",
+    "counterparty",
+    "items",
+    "amount_paid",
+    "currency",
+    "purpose",
+    "received_by",
+    "notes"
+  ],
+  "properties": {
+    "transaction_type": {
+      "type": "string",
+      "enum": [
+        "donation_received",
+        "purchase_received",
+        "reimbursement_requested",
+        "inventory_used",
+        "inventory_adjustment",
+        "cash_contribution",
+        "equipment_received"
+      ]
+    },
+    "occurred_at": {
+      "type": ["string", "null"],
+      "format": "date"
+    },
+    "counterparty": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["name", "kind"],
+      "properties": {
+        "name": {"type": ["string", "null"]},
+        "kind": {
+          "type": ["string", "null"],
+          "enum": ["donor", "supplier", "volunteer", "attendee", "other", null]
+        }
+      }
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["description", "category", "quantity", "unit"],
+        "properties": {
+          "description": {"type": ["string", "null"]},
+          "category": {
+            "type": ["string", "null"],
+            "enum": [
+              "food_beverage",
+              "serving_supplies",
+              "cleaning_supplies",
+              "merchandise",
+              "equipment",
+              "office_supplies",
+              "other",
+              null
+            ]
+          },
+          "quantity": {"type": ["number", "null"], "minimum": 0},
+          "unit": {"type": ["string", "null"]},
+          "package_count": {"type": ["number", "null"], "minimum": 0},
+          "units_per_package": {"type": ["number", "null"], "minimum": 0},
+          "condition": {
+            "type": ["string", "null"],
+            "enum": ["new_unopened", "usable", "perishable_check", "damaged", "unknown", null]
+          },
+          "expiration_date": {"type": ["string", "null"], "format": "date"}
+        }
+      }
+    },
+    "amount_paid": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Amount actually paid by the organization. Use 0 only when the speaker explicitly says no payment was made. Use null when unknown."
+    },
+    "currency": {
+      "type": ["string", "null"],
+      "pattern": "^[A-Z]{3}$"
+    },
+    "purpose": {"type": ["string", "null]},
+    "received_by": {"type": ["string", "null]},
+    "notes": {"type": ["string", "null]},
+    "missing_or_ambiguous": {
+      "type": "array",
+      "items": {"type": "string"},
+      "default": []
+    },
+    "source_transcript": {
+      "type": ["string", "null"],
+      "description": "Original transcription; preserve separately from normalized fields."
+    }
+  }
+}
