@@ -13,10 +13,11 @@ export const sql = postgres(config.databaseUrl, {
 export async function migrate() {
   const initial = await readFile(new URL("../migrations/001_initial.sql", import.meta.url), "utf8");
   const cashContributions = await readFile(new URL("../migrations/002_cash_contributions.sql", import.meta.url), "utf8");
-  for (const statement of [...initial, ...cashContributions].join("
-").split(";").map((part) => part.trim()).filter(Boolean)) {
-    await sql.unsafe(statement);
-  }
+  const statements = [initial, cashContributions]
+    .flatMap((source) => source.split(";"))
+    .map((statement) => statement.trim())
+    .filter(Boolean);
+  for (const statement of statements) await sql.unsafe(statement);
 }
 
 export async function closeDb() {
