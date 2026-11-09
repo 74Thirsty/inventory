@@ -30,18 +30,42 @@
       ]
     },
     "occurred_at": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "format": "date"
     },
     "counterparty": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "additionalProperties": false,
-      "required": ["name", "kind"],
+      "required": [
+        "name",
+        "kind"
+      ],
       "properties": {
-        "name": {"type": ["string", "null"]},
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "kind": {
-          "type": ["string", "null"],
-          "enum": ["donor", "supplier", "volunteer", "attendee", "other", null]
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "donor",
+            "supplier",
+            "volunteer",
+            "attendee",
+            "other",
+            null
+          ]
         }
       }
     },
@@ -50,11 +74,24 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["description", "category", "quantity", "unit"],
+        "required": [
+          "description",
+          "category",
+          "quantity",
+          "unit"
+        ],
         "properties": {
-          "description": {"type": ["string", "null"]},
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "category": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "enum": [
               "food_beverage",
               "serving_supplies",
@@ -66,37 +103,114 @@
               null
             ]
           },
-          "quantity": {"type": ["number", "null"], "minimum": 0},
-          "unit": {"type": ["string", "null"]},
-          "package_count": {"type": ["number", "null"], "minimum": 0},
-          "units_per_package": {"type": ["number", "null"], "minimum": 0},
-          "condition": {
-            "type": ["string", "null"],
-            "enum": ["new_unopened", "usable", "perishable_check", "damaged", "unknown", null]
+          "quantity": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
           },
-          "expiration_date": {"type": ["string", "null"], "format": "date"}
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "package_count": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "units_per_package": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "condition": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "new_unopened",
+              "usable",
+              "perishable_check",
+              "damaged",
+              "unknown",
+              null
+            ]
+          },
+          "expiration_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "adjustment_direction": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "increase",
+              "decrease",
+              null
+            ],
+            "description": "Required for inventory_adjustment transactions; determines whether stock increases or decreases."
+          }
         }
       }
     },
     "amount_paid": {
-      "type": ["number", "null"],
+      "type": [
+        "number",
+        "null"
+      ],
       "minimum": 0,
       "description": "Amount actually paid by the organization. Use 0 only when the speaker explicitly says no payment was made. Use null when unknown."
     },
     "currency": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "pattern": "^[A-Z]{3}$"
     },
-    "purpose": {"type": ["string", "null"]},
-    "received_by": {"type": ["string", "null"]},
-    "notes": {"type": ["string", "null"]},
+    "purpose": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "received_by": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "notes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "missing_or_ambiguous": {
       "type": "array",
-      "items": {"type": "string"},
+      "items": {
+        "type": "string"
+      },
       "default": []
     },
     "source_transcript": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Original transcription; preserve separately from normalized fields."
     }
   }
