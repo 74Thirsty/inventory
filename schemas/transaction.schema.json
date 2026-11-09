@@ -280,8 +280,38 @@
             "items": {
               "required": [
                 "adjustment_direction"
-              ]
+              ],
+              "properties": {
+                "adjustment_direction": {
+                  "type": "string",
+                  "enum": [
+                    "increase",
+                    "decrease"
+                  ]
+                }
+              }
             }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "transaction_type": {
+            "not": {
+              "const": "cash_contribution"
+            }
+          }
+        },
+        "required": [
+          "transaction_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "amount_received": {
+            "type": "null"
           }
         }
       }
