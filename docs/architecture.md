@@ -1,133 +1,135 @@
-# Architecture and implementation plan
+# Architecture and implementation status
 
-## Objective
+## Purpose
 
-Provide Lost Limb Riders with a voice-first, auditable way to capture operational records without requiring volunteers to complete lengthy forms. Start with inventory and donated goods; expand to purchases, reimbursements, fundraiser income/expenses, and equipment only after the first workflow is reliable.
+Build a voice-first, auditable administrative record system for Lost Limb Riders. The first operational scope is non-cash donations, purchases, inventory usage, adjustments, equipment receipts, cash contributions, and fundraiser recordkeeping.
 
-## End-to-end flow
+## Implemented in this repository
 
-1. **Capture:** Authorized user sends a Teams voice message or uploads an audio file through an approved channel.
-2. **Identify source:** Record tenant/user/message identifiers and the original media reference. Verify the sender is authorized.
-3. **Transcribe:** Speech service returns transcript and confidence/metadata. Preserve the original audio only under an approved retention policy.
-4. **Extract:** LLM converts transcript to a proposed transaction using the canonical JSON schema. It must return null for unknown facts and include a list of missing/ambiguous fields.
-5. **Validate:** Deterministic validation checks dates, quantities, units, transaction type, currency, amount, and required fields. Reject malformed or contradictory output.
-6. **Clarify:** If required information is missing, ask the submitter one focused question at a time. Do not create an official record yet.
-7. **Review:** Send a readable summary and attachments to an authorized approver. The approver can approve, reject, or request correction.
-8. **Commit:** After approval, create the system-of-record entry and attach source transcript, approval metadata, and receipts/delivery slips.
-9. **Generate:** Produce a transaction confirmation and update inventory/reporting views.
-10. **Respond:** Send the record ID and SharePoint link to the submitter.
+- **Phone input:** the submitter uses the phone keyboard microphone to dictate a message into a dedicated Teams channel. The phone sends the resulting text, not a native Teams audio-note attachment.
+- **Teams bridge:** a Power Automate flow can forward authorized channel messages to the n8n webhook. Tenant-specific setup is documented in teams-dictation-setup.md.
+- **Automation:** an importable n8n workflow authenticates the incoming webhook, calls an OpenAI-compatible Chat Completions endpoint for structured extraction, and submits a draft to the API.
+- **API:** Fastify service with separate intake and approver bearer tokens.
+- **Database:** PostgreSQL transaction ledger, source-message uniqueness, idempotency keys, and append-only audit events at the application level.
+- **Validation:** Zod schema validation plus deterministic approval completeness checks. Unknown details remain unresolved; AI cannot approve.
+- **Lifecycle:** draft creation, officer correction, approval, rejection, and audit-history retrieval.
+- **Inventory reporting:** on-hand quantities derive from approved receipts, usage, and signed adjustments.
+- **Documents:** approved records can be generated on demand as editable DOCX or printable HTML. They are not automatically saved to SharePoint.
+- **Deployment foundation:** Dockerfile, Compose file, environment template, SQL migrations, and CI syntax/schema/unit-test workflow.
 
-## Transaction types
+## Not implemented / production blockers
 
-- `donation_received`: non-cash items received at no cost.
-- `purchase_received`: goods acquired using organization funds.
-- `reimbursement_requested`: volunteer-paid expense awaiting review/payment.
-- `inventory_used`: items consumed or distributed for a named event/program.
-- `inventory_adjustment`: spoilage, damage, count correction, or other approved adjustment.
-- `cash_contribution`: cash/check/electronic contribution (requires a separate money-handling control).
-- `equipment_received`: durable property received by donation or purchase.
+- Native Teams voice-note/audio attachment ingestion and server-side speech transcription.
+- Interactive Teams approval cards, conversational clarification messages, and automated Teams confirmation replies.
+- SharePoint evidence/document filing, Microsoft Lists/Dataverse synchronization, and Excel/Power BI dashboards.
+- Receipt/photo upload and durable evidence-file storage.
+- Per-user Microsoft Entra ID/OIDC authentication and role-based access; the current API uses shared intake and approver secrets.
+- Production hosting, HTTPS reverse proxy, rate limiting, backup/restore, monitoring, retention controls, and tenant permission review.
+- Full API/database integration tests and a successful live end-to-end test against a configured n8n, Teams, LLM, and PostgreSQL environment.
 
-## System of record
+Do not call the system production-ready or enter live donor/financial records until these blockers are resolved and tested.
 
-Recommended first choice: Microsoft Lists for structured records if the organization's Microsoft 365 plan and permissions support it. Use Dataverse if stronger relational controls, role-based access, or future app development justify the licensing and setup. SharePoint document libraries hold source files and generated documents. Excel is a reporting/export surface, not the only database.
+## End-to-end target flow
 
-Suggested lists/tables:
+1. **Capture:** authorized submitter dictates into the private Teams inventory-intake channel.
+2. **Bridge:** Power Automate verifies sender membership/identity and forwards message ID, sender ID, timestamp, and plain text over HTTPS to n8n.
+3. **Authenticate:** n8n rejects requests unless the configured webhook secret is present and correct.
+4. **Extract:** LLM returns a proposed transaction matching the canonical schema. The transcript is treated as untrusted data, never as instructions to bypass policy.
+5. **Validate:** API validates types, dates, quantities, units, currency, amount fields, and transaction-specific constraints.
+6. **Persist draft:** PostgreSQL saves the source reference and transaction in draft_needs_approval status. Repeated message IDs are idempotently handled.
+7. **Clarify/correct:** missing facts remain listed; an authorized officer corrects the draft through the API. The correction is audited.
+8. **Approve/reject:** an authorized officer explicitly approves or rejects. Approval is blocked when required fields remain unresolved.
+9. **Generate:** after approval, API generates a downloadable DOCX/HTML record.
+10. **Report:** inventory totals include approved movements only; summary separates cash received from cash paid.
 
-- Inventory Transactions (append-only transaction ledger)
-- Inventory Items (optional item catalog and unit conventions)
-- Events / Programs
-- Donors and Suppliers
-- Approvals
-- Documents / Evidence index
+## Transaction types and accounting separation
 
-Do not maintain a manually edited quantity field as the only history. Derive on-hand quantities from approved receipts, usage, and adjustments, or maintain a reconciled balance with a full transaction ledger.
+- donation_received: non-cash goods received at no cost. Record quantity and donor; amount_paid must be zero. Do not estimate fair market value or tax deduction.
+- purchase_received: goods acquired using organization funds. Record amount_paid and retain the itemized receipt/payment evidence outside this API until evidence storage is implemented.
+- reimbursement_requested: volunteer-paid expense awaiting officer review/payment. Never initiate payment automatically.
+- inventory_used: items consumed or distributed for a named event/program.
+- inventory_adjustment: spoilage, damage, count correction, or other approved adjustment. Every item requires adjustment_direction of increase or decrease.
+- cash_contribution: cash/check/electronic contribution. Use amount_received, never amount_paid, and do not create inventory line items.
+- equipment_received: durable property received by donation or purchase. Track it as a separate item category.
 
-## Minimum transaction fields
+## Data model
 
-- Unique record ID
-- Transaction type and status
-- Occurrence date (unknown remains null)
-- Counterparty name and type
-- Item description, category, quantity, unit
-- Amount paid by the organization (zero for fully donated goods; unknown remains null)
-- Amount received (cash contributions only; never combine with amount paid)
-- Currency
-- Purpose/event
-- Submitted by and received by
-- Source channel and source message reference
-- Transcript and extraction version
-- Supporting evidence links
-- Approval identity, decision, and timestamp
-- Created/updated timestamps and revision history
+The PostgreSQL transactions table stores transaction type, status, occurrence date, counterparty, item lines, amount_paid, amount_received, currency, purpose, receiver, notes, original transcript, source channel/message ID, submitter, and approval/rejection metadata.
+
+Audit events record draft creation, corrections, approval, and rejection. Correction events preserve the corrected transaction snapshot and missing-field list. Source message IDs are unique. Idempotency keys are serialized with a PostgreSQL advisory transaction lock.
+
+Inventory balance is calculated from approved movements:
+- donation_received, purchase_received, equipment_received: add quantity.
+- inventory_used: subtract quantity.
+- inventory_adjustment: add or subtract according to each item's adjustment_direction.
+- draft and rejected transactions: no stock effect.
+- cash_contribution: no inventory effect.
 
 ## Approval policy
 
-- All financial transactions, reimbursements, cash contributions, and inventory adjustments require approval by an authorized officer.
-- Low-risk donated supply receipts may eventually use a delegated receiver role, but only after the board adopts a written control policy.
-- The AI cannot approve its own extraction.
-- Corrections to approved records create a linked correction/reversal record and retain the original.
-- Never let a transcript alone trigger a payment, bank transfer, tax filing, or external financial commitment.
+- All financial transactions, reimbursements, cash contributions, and inventory adjustments require explicit officer approval.
+- The API cannot approve its own extraction.
+- Corrections can only be made while a record remains a draft.
+- Approved and rejected records cannot be silently edited through the current API.
+- No transaction triggers a payment, bank transfer, tax filing, or external financial commitment.
+- Donated goods are not assigned a tax-deductible value by the AI or this system.
 
 ## Security and privacy
 
-- Use organization-owned Microsoft 365 and n8n accounts; never embed secrets in workflow JSON or Git.
-- Require authenticated webhooks; do not expose an unauthenticated public endpoint.
-- Apply least-privilege Microsoft Graph/SharePoint permissions.
-- Restrict records and evidence to authorized officers and designated volunteers.
-- Store credentials in n8n credentials/secrets, not node parameters or repository files.
-- Log actor, source, action, timestamp, approval, and record ID; avoid logging unnecessary personal data or full sensitive audio.
-- Define retention and deletion policies with the board/accountant before retaining audio or donor details.
-- Back up the system-of-record data and test restoration.
+- Never commit service secrets, database credentials, API tokens, or donor documents.
+- Use separate high-entropy intake and approver secrets.
+- Keep PostgreSQL on a private network; expose the API only through a trusted HTTPS reverse proxy.
+- Keep the n8n webhook secret separate from the API intake token.
+- Restrict the Teams channel and validate stable sender identity in Power Automate.
+- Do not put the approver token in the Teams bridge workflow.
+- Define data retention and access rules with the board/accountant before storing donor data, receipts, audio, or transcripts.
+- Configure encrypted backups and verify restoration.
+- Replace shared bearer secrets with named Entra ID/OIDC identities before broad volunteer access.
 
 ## Rollout phases
 
-### Phase 0 — Foundation (repository starter)
-- Define transaction schema and extraction prompt.
-- Provide n8n webhook validation starter.
-- Document security and approval requirements.
+### Phase 1 — controlled inventory pilot
+- Deploy API and PostgreSQL in a controlled test environment.
+- Configure n8n environment variables and import dictated Teams workflow.
+- Configure a private Teams channel and Power Automate sender filter.
+- Use synthetic test data; verify duplicate handling, incomplete records, corrections, approval, rejection, stock calculations, and DOCX output.
+- Obtain board approval for authorized submitters, approvers, and record retention.
 
-### Phase 1 — Inventory and donated goods
-- Connect one approved voice intake channel.
-- Add speech transcription and structured extraction.
-- Add clarification and human approval.
-- Save approved entries to Microsoft Lists/Dataverse.
-- Generate Word/PDF receipt-of-goods record and SharePoint filing.
-- Test donations, purchases, duplicates, missing dates, ambiguous quantities, and failed integrations.
+### Phase 2 — evidence and Microsoft 365 integration
+- Add secure receipt/photo uploads.
+- Store generated documents and evidence in SharePoint with least-privilege permissions.
+- Add Teams approval cards and confirmation replies.
+- Add conversational clarification for missing fields.
+- Add Microsoft Lists/Dataverse or Power BI only if required; PostgreSQL remains the authoritative ledger unless an explicit migration is designed.
 
-### Phase 2 — Usage and event summaries
-- Record inventory usage and adjustments.
-- Reconcile event-level quantities.
-- Generate event summary from approved records only.
+### Phase 3 — full administration
+- Expand fundraiser income/expense summaries and reimbursements.
+- Add equipment register, donor/vendor directory, event records, and board reports.
+- Add scheduled reconciliations, backup/restore verification, monitoring, and annual access reviews.
 
-### Phase 3 — Expenses and reimbursements
-- Capture itemized receipts and payment evidence.
-- Add approval limits and reimbursement status.
-- Keep expense records distinct from non-cash donations.
+## Acceptance criteria before production
 
-### Phase 4 — Reporting and governance
-- Monthly inventory/donation/expense reports.
-- Board-ready summaries.
-- Retention, backup, access review, and annual compliance checklist.
+- CI passes on the final commit and all automated tests pass.
+- Container image builds and starts successfully with a clean PostgreSQL database.
+- Migration succeeds on both fresh and existing test databases.
+- Invalid and unauthenticated requests are rejected; secrets never appear in logs.
+- Duplicate source messages create exactly one transaction.
+- Unknown or ambiguous details prevent approval until corrected.
+- Donated goods, purchases, inventory use, adjustments, cash received, and cash paid are separately represented.
+- Only approved movements affect stock balances.
+- Approval and rejection are attributable to named authorized officers.
+- Audit history preserves every correction and decision.
+- DOCX/HTML generation is verified against real test records.
+- Teams-to-n8n-to-API end-to-end test passes with tenant-approved permissions.
+- Backups restore successfully and monitoring alerts on failures.
+- Organization approves access, retention, privacy, and financial-control policies.
 
-## Acceptance criteria for Phase 1
+## Organization decisions required
 
-- A Teams/audio submission can be traced to its original sender and source.
-- Transcription uncertainty is visible and does not become invented facts.
-- Extracted records validate against the schema.
-- Missing required details trigger clarification rather than silent completion.
-- Duplicate source message IDs are idempotently rejected.
-- No record becomes official without an authorized approval.
-- Approved records are written to the selected system of record and have a stable ID.
-- Generated documents link back to the source and approval.
-- Failure at transcription, extraction, approval, or storage is reported and safely retryable.
-- A test dataset demonstrates correct distinction between donated and purchased goods.
-
-## Decisions still required from the organization
-
-- Microsoft 365 tenant and whether Teams is enabled for the users.
-- Whether Lists or Dataverse is the approved system of record.
-- n8n hosting location, owner, backups, and credential management.
-- Approved speech and LLM providers.
-- Who may submit, receive, approve, and correct records.
-- Evidence/audio retention policy.
-- Exact legal organization name and preferred document branding.
+- Exact legal organization name and brand/logo for generated records.
+- Microsoft 365 tenant owner and authorized Teams channel members.
+- Named submitters, inventory receivers, approvers, and correction permissions.
+- Whether n8n is self-hosted or managed and where it runs.
+- Approved LLM provider and data-processing terms.
+- SharePoint destination and retention policy for receipts and generated documents.
+- Hosting owner, domain, backup destination, monitoring, and incident contact.
