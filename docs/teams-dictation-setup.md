@@ -54,4 +54,4 @@ The Power Automate HTTP action may require a premium license depending on the te
 - The workflow calls the configured OpenAI Chat Completions endpoint. Do not send donor or financial information to a model provider until the organization approves its data-processing terms and retention settings.
 - Teams submission creates a pending draft. An authorized officer must review and approve it using the approver API. The Teams approval card/interactive approval experience is a separate integration task.
 - Do not enable public channel intake. Keep the channel private and filter sender identity in Power Automate as well as the webhook secret check.
-- Never place APPPROVER_TOKEN, database credentials, or service secrets in Teams messages, GitHub, or a client-side app.
+- Never place APPROVER_TOKEN, database credentials, or service secrets in Teams messages, GitHub, or a client-side app.
