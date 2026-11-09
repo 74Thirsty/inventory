@@ -20,6 +20,10 @@ Return exactly one JSON object matching `schemas/transaction.schema.json`. Do no
 - Normalize obvious item names conservatively. “Pop” may be described as “soft drinks”; do not infer a brand unless spoken.
 - Quantities must be numeric and units must be explicit. Do not convert cases into cans unless the number of cans per case is known.
 - If multiple distinct items are mentioned, create one item object per item.
+- For `inventory_adjustment`, every item must include `adjustment_direction` set to `increase` or `decrease`; never infer the direction if unclear.
+- For `cash_contribution`, use an empty `items` array; capture the cash amount and currency in the top-level amount fields.
+- Use only these item categories: `food_beverage`, `serving_supplies`, `cleaning_supplies`, `merchandise`, `equipment`, `office_supplies`, `other`.
+- Use only these condition values: `new_unopened`, `usable`, `perishable_check`, `damaged`, `unknown`.
 - Do not create an official transaction, approve it, or claim that a record has been saved.
 
 ## Transcript
