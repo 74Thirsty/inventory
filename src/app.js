@@ -21,7 +21,7 @@ function approvalMissing(record, auditMissing = []) {
   if (!record.received_by) add("received_by");
   if (!record.purpose) add("purpose");
   if (["donation_received","purchase_received","reimbursement_requested","cash_contribution","equipment_received"].includes(record.transaction_type) && !record.counterparty?.name) add("counterparty.name");
-  if (["purchase_received","reimbursement_requested","cash_contribution"].includes(record.transaction_type) && record.amount_paid === null) add("amount_paid");
+  if (["purchase_received","reimbursement_requested","cash_contribution","equipment_received"].includes(record.transaction_type) && record.amount_paid === null) add("amount_paid");
   if (record.transaction_type === "donation_received" && Number(record.amount_paid) !== 0) add("amount_paid must be zero for a fully donated item");
   if (record.transaction_type === "cash_contribution" && !record.currency) add("currency");
   if (record.transaction_type !== "cash_contribution" && (!Array.isArray(record.items) || record.items.length === 0)) add("items");
@@ -126,7 +126,7 @@ export function buildApp() {
       return exists.length ? reply.code(409).send({ error: "invalid_state", status: exists[0].status }) : reply.code(404).send({ error: "not_found" });
     }
     await sql`INSERT INTO audit_events (transaction_id,event_type,actor,source,details)
-      VALUES (${request.params.id},'draft_corrected',${actor},'api',${sql.json({missing_or_ambiguous: input.missing_or_ambiguous})})`;
+      VALUES (${request.params.id},'draft_corrected',${actor},'api',${sql.json({missing_or_ambiguous: input.missing_or_ambiguous, transaction: input})})`;
     return { record: toRecord(rows[0]) };
   });
 
