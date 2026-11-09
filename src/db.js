@@ -11,8 +11,10 @@ export const sql = postgres(config.databaseUrl, {
 });
 
 export async function migrate() {
-  const migration = await readFile(new URL("../migrations/001_initial.sql", import.meta.url), "utf8");
-  await sql.unsafe(migration);
+  const initial = await readFile(new URL("../migrations/001_initial.sql", import.meta.url), "utf8");
+  const cashContributions = await readFile(new URL("../migrations/002_cash_contributions.sql", import.meta.url), "utf8");
+  await sql.unsafe(initial);
+  await sql.unsafe(cashContributions);
 }
 
 export async function closeDb() {
