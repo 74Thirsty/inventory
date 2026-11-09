@@ -23,7 +23,7 @@ Import workflows/n8n-dictated-teams-intake.json into n8n. Configure these enviro
 - LLR_API_BASE_URL: HTTPS base URL for the Inventory API, without a trailing slash.
 - LLR_API_TOKEN: intake token from the Inventory API's protected .env.
 
-Restart n8n after changing environment variables. Confirm that the webhook returns 401 when the secret is absent or incorrect before activating it. The API token must be an intake-only token, never the approver token.
+Restart n8n after changing environment variables. The imported workflow disables saving successful, failed, and manual execution payloads because they contain transcripts and secret-bearing headers. Confirm that the webhook returns 401 when the secret is absent or incorrect before activating it. Review the n8n instance-wide execution-data retention settings as well; do not re-enable payload retention without redacting headers and donor/financial content. The API token must be an intake-only token, never the approver token.
 
 ## Connect Teams to n8n
 
