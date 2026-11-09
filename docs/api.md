@@ -69,3 +69,15 @@ Approval is state-checked and audited. Only drafts can transition. Approval is b
 - Keep the approver token only in a trusted automation/operator environment.
 - Restrict network access; do not expose Postgres publicly.
 - Configure backups, retention, monitoring, and restore drills before production use.
+
+
+## General administrative work
+
+The work-request API is separate from the inventory transaction API. It accepts natural-language requests without requiring the caller to choose a document type.
+
+- `POST /v1/work-requests` — intake-authenticated; stores the original source text and source metadata as a new `received` request. Supports source-message and idempotency deduplication.
+- `PUT /v1/work-requests/:id/plan` — intake-authenticated orchestration endpoint; records the dynamically selected deliverables, context, open questions, execution plan, and risk flags. Requests with unresolved questions become `awaiting_clarification`; otherwise they become `ready_for_review`. This records a plan only; it does not generate files, approve work, or perform external actions.
+- `GET /v1/work-requests?status=all&limit=50` — reviewer-authenticated queue.
+- `GET /v1/work-requests/:id` — reviewer-authenticated request details and event history.
+
+The source text is preserved separately from the AI-generated plan. Do not pass an untrusted transcript as system instructions. The planner prompt is in `prompts/plan-administrative-work.md`. Current statuses beyond plan capture are reserved for later workflow phases and must not be interpreted as implemented approval or completion actions.
