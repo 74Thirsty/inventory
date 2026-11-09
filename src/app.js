@@ -155,6 +155,14 @@ export function buildApp() {
     return { record: toRecord(rows[0]) };
   });
 
+
+  app.get("/v1/transactions/:id/audit", { preHandler: requireApproverAuth }, async (request, reply) => {
+    const record = await sql`SELECT id FROM transactions WHERE id=${request.params.id}`;
+    if (!record.length) return reply.code(404).send({ error: "not_found" });
+    const events = await sql`SELECT id,event_type,actor,source,details,occurred_at FROM audit_events WHERE transaction_id=${request.params.id} ORDER BY occurred_at ASC`;
+    return { events };
+  });
+
   app.get("/v1/transactions/:id/document", { preHandler: requireApproverAuth }, async (request, reply) => {
     const rows = await sql`SELECT * FROM transactions WHERE id=${request.params.id}`;
     if (!rows.length) return reply.code(404).send({ error: "not_found" });
