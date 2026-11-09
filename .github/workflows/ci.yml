@@ -1,4 +1,4 @@
-name: CI # Includes patched dependency audit and transactional audit-path checks
+name: CI # Includes patched dependency audit, PostgreSQL integration, and Teams workflow validation
 
 on:
   push:
