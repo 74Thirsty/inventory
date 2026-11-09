@@ -14,7 +14,8 @@
     "currency",
     "purpose",
     "received_by",
-    "notes"
+    "notes",
+    "amount_received"
   ],
   "properties": {
     "transaction_type": {
@@ -76,16 +77,14 @@
         "additionalProperties": false,
         "required": [
           "description",
-          "category",
           "quantity",
           "unit"
         ],
         "properties": {
           "description": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
           },
           "category": {
             "type": [
@@ -104,31 +103,27 @@
             ]
           },
           "quantity": {
-            "type": [
-              "number",
-              "null"
-            ],
-            "minimum": 0
+            "type": "number",
+            "exclusiveMinimum": 0
           },
           "unit": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
           },
           "package_count": {
             "type": [
               "number",
               "null"
             ],
-            "minimum": 0
+            "exclusiveMinimum": 0
           },
           "units_per_package": {
             "type": [
               "number",
               "null"
             ],
-            "minimum": 0
+            "exclusiveMinimum": 0
           },
           "condition": {
             "type": [
@@ -219,7 +214,77 @@
         "null"
       ],
       "minimum": 0,
-      "description": "Cash donations received by the organization. Use only for cash_contribution; never use amount_paid for incoming money."
+      "description": "Cash contributions received by the organization. Required as a positive amount for cash_contribution; null for all other transaction types."
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "transaction_type": {
+            "const": "cash_contribution"
+          }
+        },
+        "required": [
+          "transaction_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "items": {
+            "maxItems": 0
+          },
+          "amount_paid": {
+            "type": "null"
+          },
+          "amount_received": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "transaction_type": {
+            "const": "donation_received"
+          }
+        },
+        "required": [
+          "transaction_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "amount_paid": {
+            "const": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "transaction_type": {
+            "const": "inventory_adjustment"
+          }
+        },
+        "required": [
+          "transaction_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "items": {
+            "items": {
+              "required": [
+                "adjustment_direction"
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
 }
