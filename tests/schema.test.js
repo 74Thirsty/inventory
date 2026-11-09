@@ -37,3 +37,13 @@ test("requires a purchase amount to be positive or unknown", () => {
 test("validates the intake envelope", () => {
   assert.equal(intakeBody.safeParse({ transaction: base, source_channel: "n8n" }).success, true);
 });
+
+test("allows cash contributions without inventory line items", () => {
+  const cash = { ...base, transaction_type: "cash_contribution", items: [], amount_paid: 125 };
+  assert.equal(transactionDraft.safeParse(cash).success, true);
+});
+test("requires an explicit direction for inventory adjustments", () => {
+  const adjustment = { ...base, transaction_type: "inventory_adjustment", amount_paid: null };
+  assert.equal(transactionDraft.safeParse(adjustment).success, false);
+  assert.equal(transactionDraft.safeParse({ ...adjustment, items: [{ ...base.items[0], adjustment_direction: "decrease" }] }).success, true);
+});
