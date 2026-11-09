@@ -1,0 +1,60 @@
+{
+  "name": "LLR - Voice Intake Validation Starter",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "llr/voice-intake",
+        "responseMode": "usingRespondToWebhook",
+        "options": {}
+      },
+      "id": "d7e9e8b3-8d11-4f5e-bb1b-001a7d0e0001",
+      "name": "Receive proposed transaction",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "llr-voice-intake-starter"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body ?? $json;\nconst transcript = body.transcript;\nconst tx = body.transaction;\nconst errors = [];\nif (typeof transcript !== 'string' || transcript.trim().length === 0) errors.push('transcript is required');\nif (!tx || typeof tx !== 'object' || Array.isArray(tx)) errors.push('transaction object is required');\nconst allowed = ['donation_received','purchase_received','reimbursement_requested','inventory_used','inventory_adjustment','cash_contribution','equipment_received'];\nif (tx && !allowed.includes(tx.transaction_type)) errors.push('transaction_type is missing or invalid');\nif (tx && (!Array.isArray(tx.items) || tx.items.length === 0)) errors.push('at least one item is required');\nif (tx && tx.items && Array.isArray(tx.items)) {\n  tx.items.forEach((item, i) => {\n    if (!item || typeof item !== 'object') errors.push('items[' + i + '] must be an object');\n    else {\n      if (!item.description) errors.push('items[' + i + '].description is required');\n      if (item.quantity === null || item.quantity === undefined || typeof item.quantity !== 'number' || item.quantity < 0) errors.push('items[' + i + '].quantity must be a non-negative number');\n      if (!item.unit) errors.push('items[' + i + '].unit is required');\n    }\n  });\n}\nif (tx && tx.amount_paid !== null && tx.amount_paid !== undefined && (typeof tx.amount_paid !== 'number' || tx.amount_paid < 0)) errors.push('amount_paid must be a non-negative number or null');\nconst sourceId = body.source_message_id ?? body.sourceMessageId ?? null;\nreturn [{ json: { ok: errors.length === 0, status: errors.length === 0 ? 'draft_needs_approval' : 'needs_correction', source_message_id: sourceId, transcript: typeof transcript === 'string' ? transcript : null, transaction: tx ?? null, errors, received_at: new Date().toISOString(), warning: 'Validation only. No official record has been saved or approved.' } }];"
+      },
+      "id": "d7e9e8b3-8d11-4f5e-bb1b-001a7d0e0002",
+      "name": "Validate draft fields",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.ok ? 202 : 400 }}"
+        }
+      },
+      "id": "d7e9e8b3-8d11-4f5e-bb1b-001a7d0e0003",
+      "name": "Return validation result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [760, 300]
+    }
+  ],
+  "connections": {
+    "Receive proposed transaction": {
+      "main": [[{"node": "Validate draft fields", "type": "main", "index": 0}]]
+    },
+    "Validate draft fields": {
+      "main": [[{"node": "Return validation result", "type": "main", "index": 0}]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": [
+    {"name": "lost-limb-riders"},
+    {"name": "starter"}
+  ]
+}
