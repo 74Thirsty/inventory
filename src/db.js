@@ -13,7 +13,8 @@ export const sql = postgres(config.databaseUrl, {
 export async function migrate() {
   const initial = await readFile(new URL("../migrations/001_initial.sql", import.meta.url), "utf8");
   const cashContributions = await readFile(new URL("../migrations/002_cash_contributions.sql", import.meta.url), "utf8");
-  const statements = [initial, cashContributions]
+  const administrativeWork = await readFile(new URL("../migrations/003_administrative_work.sql", import.meta.url), "utf8");
+  const statements = [initial, cashContributions, administrativeWork]
     .flatMap((source) => source.split(";"))
     .map((statement) => statement.trim())
     .filter(Boolean);
