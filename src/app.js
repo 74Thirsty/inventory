@@ -35,7 +35,11 @@ export function buildApp() {
       const result = await sql.begin(async (tx) => {
         if (input.idempotency_key) {
           const prior = await tx`SELECT response FROM idempotency_keys WHERE key = ${input.idempotency_key}`;
-          if (prior.length) return { duplicate: true, record: prior[0].response };
+          if (prior.length) {
+            const priorId = prior[0].response?.id;
+            const existing = priorId ? await tx`SELECT * FROM transactions WHERE id = ${priorId}` : [];
+            return { duplicate: true, record: existing.length ? toRecord(existing[0]) : prior[0].response };
+          }
         }
         const rows = await tx`
           INSERT INTO transactions (
@@ -92,12 +96,17 @@ export function buildApp() {
         const rows = await tx`SELECT * FROM transactions WHERE id = ${request.params.id} FOR UPDATE`;
         if (!rows.length) return null;
         if (rows[0].status !== "draft_needs_approval") return { conflict: true, status: rows[0].status };
+        const draftAudit = await tx`SELECT details FROM audit_events WHERE transaction_id=${request.params.id} AND event_type='draft_created' ORDER BY occurred_at DESC LIMIT 1`;
+        const missing = draftAudit[0]?.details?.missing_or_ambiguous || [];
+        if (missing.length) return { incomplete: true, missing };
+        if (rows[0].transaction_type !== 'cash_contribution' && (!Array.isArray(rows[0].items) || rows[0].items.length === 0)) return { incomplete: true, missing: ['At least one line item is required.'] };
         const updated = await tx`UPDATE transactions SET status='approved', approved_by=${actor}, approved_at=now(), updated_at=now() WHERE id=${request.params.id} RETURNING *`;
         await tx`INSERT INTO audit_events (transaction_id,event_type,actor,source) VALUES (${request.params.id},'approved',${actor},'api')`;
         return toRecord(updated[0]);
       });
       if (!record) return reply.code(404).send({ error: "not_found" });
       if (record.conflict) return reply.code(409).send({ error: "invalid_state", status: record.status });
+      if (record.incomplete) return reply.code(409).send({ error: "incomplete_record", missing: record.missing });
       return { record, document_path: `/v1/transactions/${record.id}/document` };
     } catch (error) {
       request.log.error({ err: error }, "approval failed");
@@ -137,8 +146,10 @@ export function buildApp() {
             AND t.status='approved' THEN COALESCE((item->>'quantity')::numeric,0)
           WHEN t.transaction_type='inventory_used' AND t.status='approved'
             THEN -COALESCE((item->>'quantity')::numeric,0)
-          WHEN t.transaction_type='inventory_adjustment' AND t.status='approved'
+          WHEN t.transaction_type='inventory_adjustment' AND t.status='approved' AND item->>'adjustment_direction'='increase'
             THEN COALESCE((item->>'quantity')::numeric,0)
+          WHEN t.transaction_type='inventory_adjustment' AND t.status='approved' AND item->>'adjustment_direction'='decrease'
+            THEN -COALESCE((item->>'quantity')::numeric,0)
           ELSE 0 END) AS quantity_on_hand
       FROM transactions t CROSS JOIN LATERAL jsonb_array_elements(t.items) item
       GROUP BY item->>'description', item->>'unit'
