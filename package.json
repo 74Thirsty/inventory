@@ -1,0 +1,19 @@
+{
+  "name": "llr-voice-inventory",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test",
+    "check": "node --check src/server.js && node --check src/app.js && node --check src/db.js && node --check src/security.js"
+  },
+  "dependencies": {
+    "docx": "^9.5.1",
+    "fastify": "^5.2.1",
+    "postgres": "^3.4.5",
+    "zod": "^3.24.2"
+  }
+}
