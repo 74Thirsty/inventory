@@ -36,7 +36,13 @@ export const transactionDraft = z.object({
   if (value.transaction_type === "inventory_adjustment" && value.items.some((entry) => !entry.adjustment_direction)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["items"], message: "Every inventory adjustment item requires adjustment_direction: increase or decrease." });
   }
-  if (value.transaction_type === "cash_contribution" && (value.amount_received === null || value.amount_received <= 0 || value.amount_paid !== null)) {\n    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["amount_received"], message: "Cash contributions require a positive amount_received and no amount_paid." });\n  }\n  if (value.transaction_type !== "cash_contribution" && value.amount_received !== null) {\n    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["amount_received"], message: "amount_received is only valid for cash contributions." });\n  }\n  if (value.transaction_type === "donation_received" && value.amount_paid !== null && value.amount_paid !== 0) {
+  if (value.transaction_type === "cash_contribution" && (value.amount_received === null || value.amount_received <= 0 || value.amount_paid !== null)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["amount_received"], message: "Cash contributions require a positive amount_received and no amount_paid." });
+  }
+  if (value.transaction_type !== "cash_contribution" && value.amount_received !== null) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["amount_received"], message: "amount_received is only valid for cash contributions." });
+  }
+  if (value.transaction_type === "donation_received" && value.amount_paid !== null && value.amount_paid !== 0) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["amount_paid"], message: "A donation received at no cost must have amount_paid 0; otherwise clarify whether this is a partial purchase." });
   }
   if (["purchase_received","reimbursement_requested","cash_contribution"].includes(value.transaction_type) && value.amount_paid === 0) {
