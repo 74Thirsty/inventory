@@ -13,8 +13,10 @@ export const sql = postgres(config.databaseUrl, {
 export async function migrate() {
   const initial = await readFile(new URL("../migrations/001_initial.sql", import.meta.url), "utf8");
   const cashContributions = await readFile(new URL("../migrations/002_cash_contributions.sql", import.meta.url), "utf8");
-  await sql.unsafe(initial);
-  await sql.unsafe(cashContributions);
+  for (const statement of [...initial, ...cashContributions].join("
+").split(";").map((part) => part.trim()).filter(Boolean)) {
+    await sql.unsafe(statement);
+  }
 }
 
 export async function closeDb() {
