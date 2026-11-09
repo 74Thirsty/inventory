@@ -8,6 +8,7 @@ const base = {
   counterparty: { name: "Pepsi distributor", kind: "donor" },
   items: [{ description: "Canned soft drinks", category: "food_beverage", quantity: 240, unit: "can" }],
   amount_paid: 0,
+  amount_received: null,
   currency: "USD",
   purpose: "Burger fundraiser",
   received_by: "John",
@@ -39,7 +40,7 @@ test("validates the intake envelope", () => {
 });
 
 test("allows cash contributions without inventory line items", () => {
-  const cash = { ...base, transaction_type: "cash_contribution", items: [], amount_paid: 125 };
+  const cash = { ...base, transaction_type: "cash_contribution", items: [], amount_paid: null, amount_received: 125 };
   assert.equal(transactionDraft.safeParse(cash).success, true);
 });
 test("requires an explicit direction for inventory adjustments", () => {
