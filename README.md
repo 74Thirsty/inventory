@@ -12,11 +12,11 @@ John sends a voice message from his phone, for example:
 
 > “Pepsi's distributor delivered 240 cans of pop today for the burger fundraiser. I received it.”
 
-The system transcribes the audio, extracts a proposed transaction, asks for missing details, shows John a review card, and only records the transaction after an authorized person approves it. The original message/transcript and supporting files remain linked to the resulting record.
+Phone dictation converts speech to text; the n8n workflow extracts a proposed transaction, and the API stores it as a pending draft. Missing details block approval until corrected. An authorized officer approves it before an official DOCX record is generated. The original message/transcript and supporting files remain linked to the resulting record.
 
 ## Architecture
 
-- **Voice channel:** Microsoft Teams (preferred) or a controlled audio-upload endpoint.
+- **Voice channel:** Microsoft Teams channel with phone keyboard dictation in the first release; native Teams audio-note ingestion is a later Graph/bot integration.
 - **Orchestration:** n8n.
 - **Speech-to-text:** Azure AI Speech or Whisper-compatible provider.
 - **Extraction:** LLM returning strict structured JSON using `schemas/transaction.schema.json`.
@@ -28,7 +28,12 @@ The system transcribes the audio, extracts a proposed transaction, asks for miss
 
 - `schemas/transaction.schema.json` — canonical proposed transaction shape.
 - `prompts/extract-transaction.md` — extraction prompt and safety rules for the AI parser.
-- `workflows/n8n-voice-intake-starter.json` — importable n8n webhook validation starter.\n- `src/` — authenticated API, validation, PostgreSQL persistence, approvals, reports, and document generation.\n- `migrations/` — PostgreSQL schema.\n- `Dockerfile` / `docker-compose.yml` — self-hosted deployment foundation.\n- `docs/api.md` and `docs/deployment.md` — API and deployment contracts.
+- `workflows/n8n-dictated-teams-intake.json` — AI extraction and authenticated Teams-dictation intake workflow.
+- `workflows/n8n-voice-intake-starter.json` — basic validation-only starter.
+- `src/` — authenticated API, validation, PostgreSQL persistence, approvals, reports, and document generation.
+- `migrations/` — PostgreSQL schema.
+- `Dockerfile` / `docker-compose.yml` — self-hosted deployment foundation.
+- `docs/api.md` and `docs/deployment.md` — API and deployment contracts.
 - `docs/architecture.md` — system boundaries, data flow, approvals, security, and rollout plan.
 - `docs/phase-1-test-cases.md` — acceptance and failure test cases.
 
