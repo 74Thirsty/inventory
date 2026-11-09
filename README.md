@@ -8,7 +8,7 @@ A voice-first administrative record system for Lost Limb Riders. Initial scope: 
 
 ## Intended user experience
 
-John sends a voice message from his phone, for example:
+John dictates a message into Teams from his phone, for example:
 
 > “Pepsi's distributor delivered 240 cans of pop today for the burger fundraiser. I received it.”
 
