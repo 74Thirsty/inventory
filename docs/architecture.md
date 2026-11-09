@@ -49,7 +49,8 @@ Do not maintain a manually edited quantity field as the only history. Derive on-
 - Occurrence date (unknown remains null)
 - Counterparty name and type
 - Item description, category, quantity, unit
-- Amount paid (zero for fully donated goods; unknown remains null)
+- Amount paid by the organization (zero for fully donated goods; unknown remains null)
+- Amount received (cash contributions only; never combine with amount paid)
 - Currency
 - Purpose/event
 - Submitted by and received by
