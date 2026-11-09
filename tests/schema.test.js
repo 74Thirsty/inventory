@@ -48,3 +48,11 @@ test("requires an explicit direction for inventory adjustments", () => {
   assert.equal(transactionDraft.safeParse(adjustment).success, false);
   assert.equal(transactionDraft.safeParse({ ...adjustment, items: [{ ...base.items[0], adjustment_direction: "decrease" }] }).success, true);
 });
+
+test("rejects cash contributions recorded as an outgoing expense", () => {
+  const invalidCash = { ...base, transaction_type: "cash_contribution", items: [], amount_paid: 25, amount_received: null };
+  assert.equal(transactionDraft.safeParse(invalidCash).success, false);
+});
+test("rejects incoming cash on non-cash transaction types", () => {
+  assert.equal(transactionDraft.safeParse({ ...base, amount_received: 25 }).success, false);
+});
