@@ -10,7 +10,7 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "test": "node --test",
-    "check": "node --check src/server.js && node --check src/app.js && node --check src/db.js && node --check src/security.js && node --check src/schema.js && node --check src/documents.js && node -e \"JSON.parse(require('fs').readFileSync('schemas/transaction.schema.json','utf8')); JSON.parse(require('fs').readFileSync('workflows/n8n-dictated-teams-intake.json','utf8')); JSON.parse(require('fs').readFileSync('workflows/n8n-voice-intake-starter.json','utf8'))\""
+    "check": "node --check src/server.js && node --check src/app.js && node --check src/db.js && node --check src/security.js && node --check src/schema.js && node --check src/documents.js && node scripts/validate-artifacts.js"
   },
   "dependencies": {
     "docx": "^9.5.1",
