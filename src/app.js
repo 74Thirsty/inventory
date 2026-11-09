@@ -88,6 +88,30 @@ export function buildApp() {
     return { record: toRecord(rows[0]) };
   });
 
+
+  app.patch("/v1/transactions/:id", { preHandler: requireApproverAuth }, async (request, reply) => {
+    const actor = String(request.headers["x-actor-id"] || "").trim();
+    if (!actor) return reply.code(400).send({ error: "x-actor-id_required" });
+    const parsed = intakeBody.safeParse({ transaction: request.body?.transaction, source_channel: "correction", submitted_by: actor });
+    if (!parsed.success) return reply.code(400).send({ error: "validation_failed", details: parsed.error.issues });
+    const input = parsed.data.transaction;
+    const rows = await sql\`
+      UPDATE transactions SET transaction_type=${input.transaction_type}, occurred_at=${input.occurred_at},
+      counterparty=${sql.json(input.counterparty)}, items=${sql.json(input.items)},
+      amount_paid=${input.amount_paid}, currency=${input.currency}, purpose=${input.purpose},
+      received_by=${input.received_by}, notes=${input.notes}, source_transcript=${input.source_transcript ?? null},
+      updated_at=now()
+      WHERE id=${request.params.id} AND status='draft_needs_approval' RETURNING *
+    \`;
+    if (!rows.length) {
+      const exists = await sql\`SELECT status FROM transactions WHERE id=${request.params.id}\`;
+      return exists.length ? reply.code(409).send({ error: "invalid_state", status: exists[0].status }) : reply.code(404).send({ error: "not_found" });
+    }
+    await sql\`INSERT INTO audit_events (transaction_id,event_type,actor,source,details)
+      VALUES (${request.params.id},'draft_corrected',${actor},'api',${sql.json({missing_or_ambiguous: input.missing_or_ambiguous})})\`;
+    return { record: toRecord(rows[0]) };
+  });
+
   app.post("/v1/transactions/:id/approve", { preHandler: requireApproverAuth }, async (request, reply) => {
     const actor = String(request.headers["x-actor-id"] || "").trim();
     if (!actor) return reply.code(400).send({ error: "x-actor-id_required" });
@@ -96,7 +120,7 @@ export function buildApp() {
         const rows = await tx`SELECT * FROM transactions WHERE id = ${request.params.id} FOR UPDATE`;
         if (!rows.length) return null;
         if (rows[0].status !== "draft_needs_approval") return { conflict: true, status: rows[0].status };
-        const draftAudit = await tx`SELECT details FROM audit_events WHERE transaction_id=${request.params.id} AND event_type='draft_created' ORDER BY occurred_at DESC LIMIT 1`;
+        const draftAudit = await tx`SELECT details FROM audit_events WHERE transaction_id=${request.params.id} AND event_type IN ('draft_created','draft_corrected') ORDER BY occurred_at DESC LIMIT 1`;
         const missing = draftAudit[0]?.details?.missing_or_ambiguous || [];
         if (missing.length) return { incomplete: true, missing };
         if (rows[0].transaction_type !== 'cash_contribution' && (!Array.isArray(rows[0].items) || rows[0].items.length === 0)) return { incomplete: true, missing: ['At least one line item is required.'] };
