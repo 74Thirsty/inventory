@@ -50,11 +50,10 @@ Phone dictation converts speech to text; the n8n workflow extracts a proposed tr
 
 The separate `workflows/n8n-voice-intake-starter.json` is a basic validation-only webhook example; it is not the primary AI extraction workflow.
 
-Example request:
+Example API request (POST /v1/transactions):
 
 ```json
 {
-  "transcript": "Pepsi's distributor delivered 240 cans of pop today for the burger fundraiser. I received it.",
   "transaction": {
     "transaction_type": "donation_received",
     "occurred_at": "2026-11-09",
@@ -70,8 +69,14 @@ Example request:
     "currency": "USD",
     "purpose": "Burger fundraiser",
     "received_by": "John",
-    "notes": null
-  }
+    "notes": null,
+    "missing_or_ambiguous": [],
+    "source_transcript": "Pepsi's distributor delivered 240 cans of pop for the burger fundraiser. They were donated."
+  },
+  "source_message_id": "teams-channel-id:teams-message-id",
+  "source_channel": "teams_dictation",
+  "submitted_by": "verified-sender-id",
+  "idempotency_key": "teams:teams-channel-id:teams-message-id"
 }
 ```
 
