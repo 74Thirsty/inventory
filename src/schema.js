@@ -4,10 +4,10 @@ const nullableText = z.string().trim().max(2000).nullable();
 const item = z.object({
   description: z.string().trim().min(1).max(500),
   category: z.enum(["food_beverage","serving_supplies","cleaning_supplies","merchandise","equipment","office_supplies","other"]).nullable().optional(),
-  quantity: z.number().finite().nonnegative(),
+  quantity: z.number().finite().positive(),
   unit: z.string().trim().min(1).max(80),
-  package_count: z.number().finite().nonnegative().nullable().optional(),
-  units_per_package: z.number().finite().nonnegative().nullable().optional(),
+  package_count: z.number().finite().positive().nullable().optional(),
+  units_per_package: z.number().finite().positive().nullable().optional(),
   condition: z.enum(["new_unopened","usable","perishable_check","damaged","unknown"]).nullable().optional(),
   adjustment_direction: z.enum(["increase","decrease"]).nullable().optional(),
   expiration_date: z.string().date().nullable().optional()
@@ -38,8 +38,8 @@ export const transactionDraft = z.object({
   if (value.transaction_type === "donation_received" && value.amount_paid !== null && value.amount_paid !== 0) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["amount_paid"], message: "A donation received at no cost must have amount_paid 0; otherwise clarify whether this is a partial purchase." });
   }
-  if (value.transaction_type === "purchase_received" && value.amount_paid === 0) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["amount_paid"], message: "A purchase must have a positive amount or remain null pending clarification." });
+  if (["purchase_received","reimbursement_requested","cash_contribution"].includes(value.transaction_type) && value.amount_paid === 0) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["amount_paid"], message: "This transaction must have a positive amount or remain null pending clarification." });
   }
 });
 
