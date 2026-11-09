@@ -13,6 +13,22 @@ const toRecord = (row) => row ? {
   counterparty: row.counterparty
 } : null;
 
+
+function approvalMissing(record, auditMissing = []) {
+  const missing = [...auditMissing];
+  const add = (field) => { if (!missing.includes(field)) missing.push(field); };
+  if (!record.occurred_at) add("occurred_at");
+  if (!record.received_by) add("received_by");
+  if (!record.purpose) add("purpose");
+  if (["donation_received","purchase_received","reimbursement_requested","cash_contribution","equipment_received"].includes(record.transaction_type) && !record.counterparty?.name) add("counterparty.name");
+  if (["purchase_received","reimbursement_requested","cash_contribution"].includes(record.transaction_type) && record.amount_paid === null) add("amount_paid");
+  if (record.transaction_type === "donation_received" && Number(record.amount_paid) !== 0) add("amount_paid must be zero for a fully donated item");
+  if (record.transaction_type === "cash_contribution" && !record.currency) add("currency");
+  if (record.transaction_type !== "cash_contribution" && (!Array.isArray(record.items) || record.items.length === 0)) add("items");
+  if (record.transaction_type === "inventory_adjustment" && record.items.some((item) => !item.adjustment_direction)) add("inventory_adjustment direction");
+  return missing;
+}
+
 export function buildApp() {
   const app = Fastify({
     logger: { level: config.logLevel, redact: ["req.headers.authorization"] },
@@ -123,9 +139,8 @@ export function buildApp() {
         if (!rows.length) return null;
         if (rows[0].status !== "draft_needs_approval") return { conflict: true, status: rows[0].status };
         const draftAudit = await tx`SELECT details FROM audit_events WHERE transaction_id=${request.params.id} AND event_type IN ('draft_created','draft_corrected') ORDER BY occurred_at DESC LIMIT 1`;
-        const missing = draftAudit[0]?.details?.missing_or_ambiguous || [];
+        const missing = approvalMissing(rows[0], draftAudit[0]?.details?.missing_or_ambiguous || []);
         if (missing.length) return { incomplete: true, missing };
-        if (rows[0].transaction_type !== 'cash_contribution' && (!Array.isArray(rows[0].items) || rows[0].items.length === 0)) return { incomplete: true, missing: ['At least one line item is required.'] };
         const updated = await tx`UPDATE transactions SET status='approved', approved_by=${actor}, approved_at=now(), updated_at=now() WHERE id=${request.params.id} RETURNING *`;
         await tx`INSERT INTO audit_events (transaction_id,event_type,actor,source) VALUES (${request.params.id},'approved',${actor},'api')`;
         return toRecord(updated[0]);
@@ -168,6 +183,7 @@ export function buildApp() {
   app.get("/v1/transactions/:id/document", { preHandler: requireApproverAuth }, async (request, reply) => {
     const rows = await sql`SELECT * FROM transactions WHERE id=${request.params.id}`;
     if (!rows.length) return reply.code(404).send({ error: "not_found" });
+    if (rows[0].status !== "approved") return reply.code(409).send({ error: "document_requires_approval" });
     const html = transactionHtml(toRecord(rows[0]));
     return reply.type("text/html; charset=utf-8").header("content-disposition", `attachment; filename="llr-transaction-${rows[0].id}.html"`).send(html);
   });
@@ -176,6 +192,7 @@ export function buildApp() {
   app.get("/v1/transactions/:id/document.docx", { preHandler: requireApproverAuth }, async (request, reply) => {
     const rows = await sql`SELECT * FROM transactions WHERE id=${request.params.id}`;
     if (!rows.length) return reply.code(404).send({ error: "not_found" });
+    if (rows[0].status !== "approved") return reply.code(409).send({ error: "document_requires_approval" });
     const buffer = await transactionDocx(toRecord(rows[0]));
     return reply.type("application/vnd.openxmlformats-officedocument.wordprocessingml.document")
       .header("content-disposition", `attachment; filename="llr-transaction-${rows[0].id}.docx"`)
