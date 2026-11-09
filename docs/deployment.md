@@ -11,7 +11,7 @@
 
 1. Clone this repository onto the host.
 2. Generate a database password and two independent API secrets (at least 32 random characters each).
-3. Create `.env` from `.env.example`. Set `DATABASE_URL` only if overriding Compose; Compose injects it for the app. Set `API_TOKEN`, `APPROVER_TOKEN`, `ORGANIZATION_NAME`, and `PUBLIC_BASE_URL`.
+3. Create `.env` from `.env.example`. Set `POSTGRES_PASSWORD`, `API_TOKEN`, `APPROVER_TOKEN`, `ORGANIZATION_NAME`, and `PUBLIC_BASE_URL`. Compose injects the container's database URL.
 4. Set `POSTGRES_PASSWORD` in the deployment environment (or Compose's protected environment file); do not commit it.
 5. Run `docker compose up -d --build`.
 6. Confirm `GET /health/ready` returns 200 from the trusted network.
