@@ -8,7 +8,7 @@ The repository has a working backend foundation and CI build, but the live servi
 
 ## Verified in GitHub Actions
 
-The CI run associated with commit 660462c93ddd132a360b2cff47260291fe762b85 completed successfully:
+The CI run associated with commit 61f86354e9938573d5790d0478b7d970ceff246d completed successfully:
 
 - Node 22 dependency installation.
 - npm audit for production dependencies (no high-severity finding at that run).
@@ -17,7 +17,7 @@ The CI run associated with commit 660462c93ddd132a360b2cff47260291fe762b85 compl
 - Schema unit tests.
 - Production Docker image build.
 
-This verifies static checks, the current unit-test suite, dependency audit at that point in time, and image build. It does not verify a live PostgreSQL service or end-to-end integrations.
+This verifies static checks, unit tests, PostgreSQL-backed API integration tests, dependency audit at that point in time, and image build. It does not verify a live production host or the external Microsoft 365/n8n integrations.
 
 ## Implemented
 
@@ -37,7 +37,7 @@ This verifies static checks, the current unit-test suite, dependency audit at th
 
 - [ ] Generate and commit package-lock.json; use npm ci in CI and Docker builds.
 - [ ] Deploy to an organization-controlled host with HTTPS and a trusted reverse proxy.
-- [ ] Run PostgreSQL migration, CRUD, duplicate, approval, rejection, audit, stock, and document integration tests against a real test database.
+- [x] Run PostgreSQL migration, draft, duplicate, approval, rejection, audit, stock, cash separation, and document integration tests against a disposable PostgreSQL service in CI.
 - [ ] Configure encrypted backups and prove a full restore.
 - [ ] Configure uptime, error, disk, database, backup-age, and workflow-failure monitoring.
 - [ ] Configure per-user Microsoft Entra ID/OIDC authentication and role-based authorization; current API uses shared secrets.
