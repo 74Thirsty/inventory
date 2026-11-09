@@ -4,7 +4,7 @@ import { sql } from "./db.js";
 import { config } from "./config.js";
 import { intakeBody } from "./schema.js";
 import { requireApproverAuth, requireIntakeAuth } from "./security.js";
-import { transactionHtml } from "./documents.js";
+import { transactionHtml, transactionDocx } from "./documents.js";
 
 const toRecord = (row) => row ? {
   ...row,
@@ -160,6 +160,16 @@ export function buildApp() {
     if (!rows.length) return reply.code(404).send({ error: "not_found" });
     const html = transactionHtml(toRecord(rows[0]));
     return reply.type("text/html; charset=utf-8").header("content-disposition", `attachment; filename="llr-transaction-${rows[0].id}.html"`).send(html);
+  });
+
+
+  app.get("/v1/transactions/:id/document.docx", { preHandler: requireApproverAuth }, async (request, reply) => {
+    const rows = await sql\`SELECT * FROM transactions WHERE id=\${request.params.id}\`;
+    if (!rows.length) return reply.code(404).send({ error: "not_found" });
+    const buffer = await transactionDocx(toRecord(rows[0]));
+    return reply.type("application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+      .header("content-disposition", \`attachment; filename="llr-transaction-\${rows[0].id}.docx"\`)
+      .send(buffer);
   });
 
   app.get("/v1/reports/inventory", { preHandler: requireApproverAuth }, async () => {
