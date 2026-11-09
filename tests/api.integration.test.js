@@ -43,7 +43,7 @@ async function createDraft(tx, extra = {}) {
 
 before(async () => {
   await migrate();
-  await sql.unsafe("TRUNCATE TABLE audit_events, idempotency_keys, transactions RESTART IDENTITY CASCADE");
+  await sql.unsafe("TRUNCATE TABLE work_request_events, work_requests, audit_events, idempotency_keys, transactions RESTART IDENTITY CASCADE");
   app = buildApp();
   await app.ready();
 });
@@ -140,4 +140,52 @@ test("rejection and its audit event commit together", async () => {
   assert.equal(rejected.json().record.status, "rejected");
   const audit = await app.inject({ method: "GET", url: "/v1/transactions/" + id + "/audit", headers: approverHeaders });
   assert.equal(audit.json().events.at(-1).event_type, "rejected");
+});
+
+
+test("accepts general administrative requests without forcing a transaction type", async () => {
+  const source = "John: We need to organize a spring fundraiser and get the materials ready.";
+  const payload = { source_text: source, source_channel: "voice_transcript", submitted_by: "john@example.org", source_message_id: "voice-note-general-001", idempotency_key: "voice-note-general-001-key" };
+  const first = await app.inject({ method: "POST", url: "/v1/work-requests", headers: intakeHeaders, payload });
+  const duplicate = await app.inject({ method: "POST", url: "/v1/work-requests", headers: intakeHeaders, payload });
+  assert.equal(first.statusCode, 201);
+  assert.equal(first.json().work_request.status, "received");
+  assert.equal(first.json().work_request.source_text, source);
+  assert.equal(duplicate.statusCode, 200);
+  assert.equal(duplicate.json().duplicate, true);
+  assert.equal(duplicate.json().work_request.id, first.json().work_request.id);
+});
+
+test("records a dynamic work plan and routes unresolved facts to clarification", async () => {
+  const created = await app.inject({
+    method: "POST",
+    url: "/v1/work-requests",
+    headers: intakeHeaders,
+    payload: { source_text: "Prepare the materials for our spring fundraiser.", source_channel: "test", idempotency_key: "work-plan-clarification-001" }
+  });
+  const id = created.json().work_request.id;
+  const plan = {
+    intent_summary: "Prepare a coherent planning and communications package for the fundraiser.",
+    context: { event_type: "fundraiser", date_status: "unknown" },
+    deliverables: [
+      { kind: "event_plan", title: "Fundraiser event plan", purpose: "Coordinate planning and responsibilities.", format: "docx", required_facts: ["event date", "venue"] },
+      { kind: "promotion", title: "Fundraiser announcement", purpose: "Prepare draft public-facing copy.", format: "html", required_facts: ["event date", "venue"] }
+    ],
+    open_questions: ["What date and venue have been approved?"],
+    execution_plan: ["Confirm event details.", "Prepare draft deliverables.", "Route the package for officer review."],
+    risk_flags: ["Do not publish dates or venue details until confirmed."]
+  };
+  const planned = await app.inject({ method: "PUT", url: "/v1/work-requests/" + id + "/plan", headers: intakeHeaders, payload: plan });
+  assert.equal(planned.statusCode, 200);
+  assert.equal(planned.json().work_request.status, "awaiting_clarification");
+  assert.equal(planned.json().work_request.deliverables.length, 2);
+  const detail = await app.inject({ method: "GET", url: "/v1/work-requests/" + id, headers: approverHeaders });
+  assert.equal(detail.statusCode, 200);
+  assert.equal(detail.json().events.at(-1).event_type, "plan_recorded");
+  assert.equal(detail.json().work_request.source_text, "Prepare the materials for our spring fundraiser.");
+});
+
+test("requires reviewer authentication to read administrative work", async () => {
+  const response = await app.inject({ method: "GET", url: "/v1/work-requests" });
+  assert.equal(response.statusCode, 401);
 });

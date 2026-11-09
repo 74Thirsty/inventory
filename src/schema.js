@@ -57,3 +57,31 @@ export const intakeBody = z.object({
   submitted_by: z.string().trim().max(300).nullable().optional(),
   idempotency_key: z.string().trim().min(8).max(200).nullable().optional()
 }).strict();
+
+
+// General administrative work intake. This contract deliberately describes the
+// request, not a fixed document type or a preselected workflow.
+const plannedDeliverable = z.object({
+  kind: z.string().trim().min(1).max(100),
+  title: z.string().trim().min(1).max(300),
+  purpose: z.string().trim().min(1).max(2000),
+  format: z.enum(["docx","pdf","xlsx","pptx","html","txt","other"]),
+  required_facts: z.array(z.string().trim().min(1).max(500)).max(100).default([])
+}).strict();
+
+export const workRequestIntake = z.object({
+  source_text: z.string().trim().min(1).max(20000),
+  source_channel: z.string().trim().min(1).max(80).default("api"),
+  source_message_id: z.string().trim().min(1).max(500).nullable().optional(),
+  submitted_by: z.string().trim().max(300).nullable().optional(),
+  idempotency_key: z.string().trim().min(8).max(200).nullable().optional()
+}).strict();
+
+export const workRequestPlan = z.object({
+  intent_summary: z.string().trim().min(1).max(4000),
+  context: z.record(z.string(), z.unknown()).default({}),
+  deliverables: z.array(plannedDeliverable).max(50),
+  open_questions: z.array(z.string().trim().min(1).max(1000)).max(100).default([]),
+  execution_plan: z.array(z.string().trim().min(1).max(2000)).max(100).default([]),
+  risk_flags: z.array(z.string().trim().min(1).max(1000)).max(50).default([])
+}).strict();

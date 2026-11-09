@@ -1,6 +1,6 @@
-# Lost Limb Riders Inventory & Voice Administration
+# Lost Limb Riders AI Administrative Work System
 
-A voice-first administrative record system for Lost Limb Riders. Initial scope: inventory receipts, donated goods, purchases, inventory usage, and fundraiser records, with human approval before records become official.
+A general-purpose, voice-first AI administrative work system for Lost Limb Riders. People describe the outcome they need in ordinary language; AI planning and n8n orchestration determine the appropriate work and document package. Inventory is one domain capability. The existing HTML accounting application is an external subsystem reserved for later integration, not something this repository will rebuild.
 
 ## Current status
 
