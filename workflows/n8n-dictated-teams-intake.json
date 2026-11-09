@@ -12,19 +12,30 @@
       "name": "Receive dictated Teams message",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 320],
+      "position": [
+        240,
+        320
+      ],
       "webhookId": "llr-dictated-intake"
     },
     {
       "parameters": {
         "conditions": {
-          "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2},
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
           "conditions": [
             {
               "id": "b12a6f6a-5ad1-4e08-8e4d-000000000001",
-              "leftValue": "={{ $json.headers['x-llr-webhook-secret'] }}",
-              "rightValue": "={{ $env.LLR_N8N_WEBHOOK_SECRET }}",
-              "operator": {"type": "string", "operation": "equals"}
+              "leftValue": "={{ !!$env.LLR_N8N_WEBHOOK_SECRET && $json.headers['x-llr-webhook-secret'] === $env.LLR_N8N_WEBHOOK_SECRET }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
             }
           ],
           "combinator": "and"
@@ -35,7 +46,10 @@
       "name": "Authenticate intake request",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [460, 320]
+      "position": [
+        460,
+        320
+      ]
     },
     {
       "parameters": {
@@ -44,21 +58,32 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {"name": "Authorization", "value": "={{ 'Bearer ' + $env.LLR_OPENAI_API_KEY }}"},
-            {"name": "Content-Type", "value": "application/json"}
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.LLR_OPENAI_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
         "body": "={{ JSON.stringify({ model: $env.LLR_OPENAI_MODEL || 'gpt-4o-mini', response_format: { type: 'json_object' }, messages: [{ role: 'system', content: 'You extract proposed operational records for Lost Limb Riders, a nonprofit. Return only JSON. Never invent facts. Unknown fields must be null and listed in missing_or_ambiguous. Distinguish donated goods from purchases; do not infer that received means donated. Do not estimate donated goods value or tax deductibility. For inventory_adjustment each item must include adjustment_direction increase or decrease. For cash_contribution items may be empty. Preserve the original transcript in source_transcript. Allowed transaction_type values: donation_received, purchase_received, reimbursement_requested, inventory_used, inventory_adjustment, cash_contribution, equipment_received. Each item has description, category, quantity, unit, and optional adjustment_direction, condition, expiration_date, package_count, units_per_package. Top-level fields: transaction_type, occurred_at (YYYY-MM-DD or null), counterparty ({name,kind} or null), items, amount_paid (number or null), currency (USD or null), purpose, received_by, notes, missing_or_ambiguous (array), source_transcript.' }, { role: 'user', content: 'Trusted message metadata: ' + JSON.stringify({sender: $json.body?.sender || null, messageId: $json.body?.messageId || null, sentAt: $json.body?.sentAt || null}) + '\\nOriginal dictated message: ' + String($json.body?.text || '') }] }) }}",
-        "options": {"timeout": 30000}
+        "options": {
+          "timeout": 30000
+        }
       },
       "id": "a4d2fbd8-8a90-4a30-97d4-000000000003",
       "name": "Extract structured transaction",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [700, 220]
+      "position": [
+        700,
+        220
+      ]
     },
     {
       "parameters": {
@@ -68,7 +93,10 @@
       "name": "Build draft envelope",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [940, 220]
+      "position": [
+        940,
+        220
+      ]
     },
     {
       "parameters": {
@@ -77,56 +105,143 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {"name": "Authorization", "value": "={{ 'Bearer ' + $env.LLR_API_TOKEN }}"},
-            {"name": "Content-Type", "value": "application/json"}
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.LLR_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
         "body": "={{ JSON.stringify($json) }}",
-        "options": {"timeout": 30000}
+        "options": {
+          "timeout": 30000
+        }
       },
       "id": "a4d2fbd8-8a90-4a30-97d4-000000000005",
       "name": "Create pending inventory record",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1180, 220]
+      "position": [
+        1180,
+        220
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ $json }}",
-        "options": {"responseCode": 202}
+        "options": {
+          "responseCode": 202
+        }
       },
       "id": "a4d2fbd8-8a90-4a30-97d4-000000000006",
       "name": "Return pending record result",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
-      "position": [1420, 220]
+      "position": [
+        1420,
+        220
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ { error: 'unauthorized' } }}",
-        "options": {"responseCode": 401}
+        "options": {
+          "responseCode": 401
+        }
       },
       "id": "a4d2fbd8-8a90-4a30-97d4-000000000007",
       "name": "Reject unauthenticated request",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
-      "position": [700, 460]
+      "position": [
+        700,
+        460
+      ]
     }
   ],
   "connections": {
-    "Receive dictated Teams message": {"main": [[{"node": "Authenticate intake request", "type": "main", "index": 0}]]},
-    "Authenticate intake request": {"main": [[{"node": "Extract structured transaction", "type": "main", "index": 0}], [{"node": "Reject unauthenticated request", "type": "main", "index": 0}]]},
-    "Extract structured transaction": {"main": [[{"node": "Build draft envelope", "type": "main", "index": 0}]]},
-    "Build draft envelope": {"main": [[{"node": "Create pending inventory record", "type": "main", "index": 0}]]},
-    "Create pending inventory record": {"main": [[{"node": "Return pending record result", "type": "main", "index": 0}]]}
+    "Receive dictated Teams message": {
+      "main": [
+        [
+          {
+            "node": "Authenticate intake request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Authenticate intake request": {
+      "main": [
+        [
+          {
+            "node": "Extract structured transaction",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject unauthenticated request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract structured transaction": {
+      "main": [
+        [
+          {
+            "node": "Build draft envelope",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build draft envelope": {
+      "main": [
+        [
+          {
+            "node": "Create pending inventory record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create pending inventory record": {
+      "main": [
+        [
+          {
+            "node": "Return pending record result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
   "active": false,
-  "settings": {"executionOrder": "v1"},
+  "settings": {
+    "executionOrder": "v1"
+  },
   "pinData": {},
-  "tags": [{"name": "lost-limb-riders"}, {"name": "voice-intake"}]
+  "tags": [
+    {
+      "name": "lost-limb-riders"
+    },
+    {
+      "name": "voice-intake"
+    }
+  ]
 }
