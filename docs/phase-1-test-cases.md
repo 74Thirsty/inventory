@@ -29,3 +29,11 @@ Expected valid response: HTTP 202 and `status: draft_needs_approval`.
 Expected invalid response: HTTP 400 and a list of validation errors.
 
 The starter is intentionally not connected to persistence or approval yet.
+
+| Cash contribution | "We collected $125 in cash donations at the event." | cash_contribution; items empty; amount_received 125; amount_paid null; officer approval required. |
+| Cash/expense confusion | AI puts cash donation into amount_paid. | API rejects it; incoming money must use amount_received. |
+| Inventory increase adjustment | "Found 3 unopened cases of water not previously counted." | Draft adjustment with increase direction; officer approval required. |
+| Inventory decrease adjustment | "Two packs spoiled and were discarded." | Draft adjustment with decrease direction; officer approval required. |
+| Incomplete approval | Draft has no date, receiver, purpose, or counterparty where required. | Approval returns 409 with missing fields; record remains draft. |
+| Correct then approve | Officer corrects a draft and clears missing_or_ambiguous. | Correction and audit event commit together; approval then succeeds if deterministic fields pass. |
+| Rejection audit | Officer rejects a draft with a reason. | Rejection and audit event commit together; stock remains unchanged. |
