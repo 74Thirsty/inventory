@@ -4,7 +4,7 @@ A voice-first administrative record system for Lost Limb Riders. Initial scope: 
 
 ## Current status
 
-**Foundation / integration scaffold — not production-ready.** This repository contains the data contract, AI extraction instructions, system design, test cases, and an n8n intake-validation workflow. It is not yet connected to a live Microsoft Teams tenant, speech service, AI provider, SharePoint site, or accounting system. Those integrations require organization-owned credentials and configuration.
+**Backend foundation implemented; live deployment and integrations remain unverified.** The repository now includes a Fastify/PostgreSQL API, draft/approval lifecycle, audit events, inventory reporting, printable HTML and DOCX generation, Docker deployment files, validation tests, and the initial n8n validation workflow. It is not yet connected to a live Microsoft Teams tenant, speech service, AI provider, or SharePoint site.
 
 ## Intended user experience
 
@@ -28,7 +28,7 @@ The system transcribes the audio, extracts a proposed transaction, asks for miss
 
 - `schemas/transaction.schema.json` — canonical proposed transaction shape.
 - `prompts/extract-transaction.md` — extraction prompt and safety rules for the AI parser.
-- `workflows/n8n-voice-intake-starter.json` — importable n8n webhook validation starter.
+- `workflows/n8n-voice-intake-starter.json` — importable n8n webhook validation starter.\n- `src/` — authenticated API, validation, PostgreSQL persistence, approvals, reports, and document generation.\n- `migrations/` — PostgreSQL schema.\n- `Dockerfile` / `docker-compose.yml` — self-hosted deployment foundation.\n- `docs/api.md` and `docs/deployment.md` — API and deployment contracts.
 - `docs/architecture.md` — system boundaries, data flow, approvals, security, and rollout plan.
 - `docs/phase-1-test-cases.md` — acceptance and failure test cases.
 
@@ -39,7 +39,7 @@ The system transcribes the audio, extracts a proposed transaction, asks for miss
 3. Review the webhook path and configure authentication or an authenticated gateway before exposing it.
 4. Activate only after reviewing access controls.
 5. POST JSON containing `transcript` and `transaction` to the webhook. The transaction must follow the canonical schema.
-6. This starter validates and returns a proposed transaction. It does **not** save an official record or connect to Teams/SharePoint yet.
+6. The current starter validates a proposed transaction. The API can persist it as a draft, enforce approval, and generate a DOCX/HTML record. Direct Teams ingestion, speech-to-text, AI extraction, and SharePoint filing still require tenant configuration and end-to-end integration.
 
 Example request:
 
@@ -80,4 +80,4 @@ Example request:
 
 ## Development status
 
-See `docs/architecture.md` for phased implementation and integrations still requiring tenant credentials and testing.
+See `docs/architecture.md`, `docs/api.md`, and `docs/deployment.md`. Do not use real organizational data until the deployment, identity controls, backups, and integrations have been tested and approved.
