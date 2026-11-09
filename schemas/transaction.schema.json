@@ -87,9 +87,9 @@
       "type": ["string", "null"],
       "pattern": "^[A-Z]{3}$"
     },
-    "purpose": {"type": ["string", "null]},
-    "received_by": {"type": ["string", "null]},
-    "notes": {"type": ["string", "null]},
+    "purpose": {"type": ["string", "null"]},
+    "received_by": {"type": ["string", "null"]},
+    "notes": {"type": ["string", "null"]},
     "missing_or_ambiguous": {
       "type": "array",
       "items": {"type": "string"},
