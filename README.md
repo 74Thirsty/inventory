@@ -18,10 +18,10 @@ Phone dictation converts speech to text; the n8n workflow extracts a proposed tr
 
 - **Voice channel:** Microsoft Teams channel with phone keyboard dictation in the first release; native Teams audio-note ingestion is a later Graph/bot integration.
 - **Orchestration:** n8n.
-- **Speech-to-text:** Azure AI Speech or Whisper-compatible provider.
+- **Speech-to-text:** phone keyboard dictation for the first release; native audio transcription is not implemented yet.
 - **Extraction:** LLM returning strict structured JSON using `schemas/transaction.schema.json`.
-- **Approval:** Teams review/approval step; no automatic posting of uncertain financial records.
-- **System of record:** Microsoft Lists or Dataverse; SharePoint for supporting files; Excel/Power BI for reports.
+- **Approval:** separate approver API token and explicit officer action; interactive Teams approval cards are not implemented yet.
+- **System of record:** PostgreSQL transaction ledger; generated DOCX/HTML records are downloaded from the API. SharePoint, Microsoft Lists/Dataverse, Excel, and Power BI are not connected yet.
 - **Audit:** Preserve source message ID, submitter, timestamps, extracted values, approval identity/time, and correction history.
 
 ## Repository map
@@ -34,6 +34,7 @@ Phone dictation converts speech to text; the n8n workflow extracts a proposed tr
 - `migrations/` — PostgreSQL schema.
 - `Dockerfile` / `docker-compose.yml` — self-hosted deployment foundation.
 - `docs/api.md` and `docs/deployment.md` — API and deployment contracts.
+- `docs/teams-dictation-setup.md` — Teams/Power Automate bridge setup and boundaries.
 - `docs/architecture.md` — system boundaries, data flow, approvals, security, and rollout plan.
 - `docs/phase-1-test-cases.md` — acceptance and failure test cases.
 
